@@ -8,9 +8,9 @@
 > |---|---|---|
 > | Extensions (`vector`) | `V1__enable_extensions.sql` | **Implemented** (Task 1.1) |
 > | HRIS core (12 tables, §3.1 without `app_user`) | `V2__hris_core_schema.sql` | **Implemented** (Task 2.1): JPA entities in `com.mimocodes.hrisrag.data.*`, validated by Hibernate `ddl-auto=validate` |
-> | `app_user` | n/a | Planned, M6 |
-> | Documents / ingestion | n/a | Planned, M4 |
-> | Traces | n/a | Planned, M5 |
+> | `app_user` | `V5__app_users.sql` | **Implemented** (Task 6.1). Changes from the draft: `employee_code` instead of an `employee_id` FK (accounts survive an HRIS reseed); adds `department_code` and `enabled`. `password_hash` is BCrypt, written at startup from `APP_DEMO_PASSWORD`, and NULL (login disabled) in the migration |
+> | Documents / ingestion | `V3__document_ingestion.sql` | **Implemented** (Task 4.1) |
+> | Traces | `V4__rag_traces_and_query_cache.sql` | **Implemented** (Task 5.1); since Task 6.1 the trace JSON also holds `passageChecks`, `callCounts` and the user's role, department and access level |
 > | Benchmark / experiments | n/a | Planned, M6 (minimal) and M9 |
 >
 > Change made during implementation: `employee_compensation.currency` is `VARCHAR(3)` with a `char_length = 3` check, instead of

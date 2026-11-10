@@ -18,10 +18,23 @@ public final class RagContract {
 
 	public enum AnswerStatus { ANSWERED, ABSTAINED, BLOCKED, ERROR }
 
-	/** Authenticated caller. Built from the server-side identity, never from request fields. */
-	public record UserContext(String employeeCode, String role, String department) {
+	/** Document classifications in increasing order of sensitivity. */
+	public static final List<String> ACCESS_LEVELS = List.of("PUBLIC", "INTERNAL", "CONFIDENTIAL");
+
+	/**
+	 * Authenticated caller. Built only from the authenticated principal (Spring Security), never from request fields.
+	 *
+	 * @param maxAccessLevel highest classification the user may read (PUBLIC, INTERNAL or CONFIDENTIAL)
+	 */
+	public record UserContext(String employeeCode, String role, String department, String maxAccessLevel) {
+		public UserContext {
+			if (!ACCESS_LEVELS.contains(maxAccessLevel)) {
+				throw new IllegalArgumentException("unknown access level " + maxAccessLevel);
+			}
+		}
+
 		public Set<String> visibleAccessLevels() {
-			return "HR_ADMIN".equals(role) ? Set.of("PUBLIC", "INTERNAL", "CONFIDENTIAL") : Set.of("PUBLIC", "INTERNAL");
+			return Set.copyOf(ACCESS_LEVELS.subList(0, ACCESS_LEVELS.indexOf(maxAccessLevel) + 1));
 		}
 	}
 
@@ -33,8 +46,57 @@ public final class RagContract {
 	public record RagSettings(int topK, int maxContextTokens, String chatModel, double temperature) {
 	}
 
+	/** A retrieved chunk exactly as stored (retrieval metrics use these, before any guardrail screening). */
 	public record RetrievedChunk(long chunkId, String docKey, String version, String title, String sectionPath,
-			String language, String accessLevel, String content, double score, int rank) {
+			String language, String status, String accessLevel, String scopeDepartment, String content, double score,
+			int rank) {
+
+		public RetrievedChunk withContent(String newContent) {
+			return new RetrievedChunk(chunkId, docKey, version, title, sectionPath, language, status, accessLevel,
+					scopeDepartment, newContent, score, rank);
+		}
+	}
+
+	/**
+	 * What the guardrails did with one retrieved passage before context construction, so the benchmark can tell
+	 * "retrieved" apart from "sent to the model".
+	 *
+	 * @param outcome CLEAN (sent unchanged), FLAGGED (sent unchanged, suspicious lines detected), REDACTED (sent with the
+	 *                flagged sentences removed), REMOVED (nothing left to send) or DENIED (failed the access re-check)
+	 * @param rules   rule ids that matched, empty when CLEAN
+	 * @param removedSentences number of sentences removed from the passage
+	 */
+	public record PassageCheck(long chunkId, String docKey, int rank, String outcome, List<String> rules,
+			int removedSentences) {
+	}
+
+	/**
+	 * Provider calls of one request, counted separately for benchmark cost reporting. A cached query embedding is
+	 * counted in {@code embeddingCacheHits}, not in {@code embeddingCalls} (it costs no quota).
+	 */
+	public record CallCounts(int embeddingCalls, int embeddingCacheHits, int chatCalls, int promptTokens,
+			int completionTokens, int thinkingTokens) {
+
+		public static CallCounts of(List<ModelCall> calls) {
+			int emb = 0, hits = 0, chat = 0, p = 0, c = 0, t = 0;
+			for (ModelCall m : calls) {
+				if (m.purpose().startsWith("EMBED")) {
+					if (m.cached()) {
+						hits++;
+					}
+					else {
+						emb++;
+					}
+				}
+				else {
+					chat++;
+					p += m.promptTokens() == null ? 0 : m.promptTokens();
+					c += m.completionTokens() == null ? 0 : m.completionTokens();
+					t += m.thinkingTokens() == null ? 0 : m.thinkingTokens();
+				}
+			}
+			return new CallCounts(emb, hits, chat, p, c, t);
+		}
 	}
 
 	/** A validated citation: source id as shown to the model ("S2") resolved to the stored chunk. */
@@ -52,9 +114,15 @@ public final class RagContract {
 	public record Timings(long totalMs, long embeddingMs, long retrievalMs, long generationMs) {
 	}
 
+	/**
+	 * @param retrieved     chunks as retrieved (input for retrieval-quality metrics)
+	 * @param passageChecks guardrail outcome per retrieved chunk (input for security metrics)
+	 * @param contextSent   the source text actually sent to the model, after screening
+	 */
 	public record RagResult(UUID requestId, StrategyId strategy, AnswerStatus status, String answer,
-			List<Citation> citations, List<RetrievedChunk> retrieved, String contextSent, List<ModelCall> modelCalls,
-			List<GuardrailDecision> guardrails, Timings timings, RagSettings settings, String promptVersion) {
+			List<Citation> citations, List<RetrievedChunk> retrieved, List<PassageCheck> passageChecks,
+			String contextSent, List<ModelCall> modelCalls, CallCounts callCounts, List<GuardrailDecision> guardrails,
+			Timings timings, RagSettings settings, String promptVersion) {
 	}
 
 	public interface RagStrategy {

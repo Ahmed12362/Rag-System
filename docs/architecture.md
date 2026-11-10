@@ -457,7 +457,7 @@ call limits, per-call timing and trace capture in one place we control. The spec
 
 | Concern | Design |
 |---|---|
-| **Identity** | Spring Security with a fixed set of synthetic users and roles (`EMPLOYEE`, `MANAGER`, `HR_ADMIN`), introduced in Milestone 6. `UserContext` comes only from the authenticated principal. Any employee ID in the question text is untrusted input for tools and is checked against ownership/role. |
+| **Identity** | Spring Security with a fixed set of synthetic users and roles (`EMPLOYEE`, `MANAGER`, `HR_ADMIN`), introduced in Milestone 6. **Implemented in Task 6.1**: HTTP Basic, stateless; `security` package (D35). Access-control order is D36 and passage redaction is D37; the guardrail layers are described in `docs/rag-strategies.md` §2. `UserContext` (employee, role, department, max access level) comes only from the authenticated principal. Any employee ID in the question text is untrusted input for tools and is checked against ownership/role. |
 | **Configuration** | `.env` (git-ignored) → environment variables → Spring properties. `application.yml` holds non-secret defaults only. App settings are `@ConfigurationProperties` records under `hrisrag.*`. |
 | **Errors** | RFC 9457 `ProblemDetail` via one `@RestControllerAdvice`. Safe messages to clients; details to logs only, without secrets. |
 | **Timeouts / retries** | Model calls have a timeout. Spring AI retry is kept for transient provider errors, and every retry is counted in the trace. The benchmark runner adds client-side rate limiting and is resumable. |

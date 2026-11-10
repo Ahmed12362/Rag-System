@@ -39,8 +39,8 @@ public class VectorRetriever {
 		List<RetrievedChunk> rows = tx.execute(status -> {
 			jdbc.execute("SET LOCAL hnsw.iterative_scan = relaxed_order");
 			return jdbc.query("""
-					SELECT c.id, d.doc_key, d.version, d.title, c.section_path, c.language, d.access_level, c.content,
-					       1 - (c.embedding <=> ?::vector) AS score
+					SELECT c.id, d.doc_key, d.version, d.title, c.section_path, c.language, d.status, d.access_level,
+					       d.scope_department, c.content, 1 - (c.embedding <=> ?::vector) AS score
 					FROM document_chunk c JOIN source_document d ON d.id = c.document_id
 					WHERE d.status = 'ACTIVE'
 					  AND d.access_level = ANY (?)
@@ -48,7 +48,8 @@ public class VectorRetriever {
 					ORDER BY c.embedding <=> ?::vector
 					LIMIT ?""", (rs, i) -> new RetrievedChunk(rs.getLong("id"), rs.getString("doc_key"),
 					rs.getString("version"), rs.getString("title"), rs.getString("section_path"), rs.getString("language"),
-					rs.getString("access_level"), rs.getString("content"), rs.getDouble("score"), 0),
+					rs.getString("status"), rs.getString("access_level"), rs.getString("scope_department"),
+					rs.getString("content"), rs.getDouble("score"), 0),
 					q, user.visibleAccessLevels().toArray(String[]::new), user.department(), q, topK);
 		});
 		List<RetrievedChunk> sorted = new ArrayList<>(rows);
@@ -58,7 +59,7 @@ public class VectorRetriever {
 		for (int i = 0; i < sorted.size(); i++) {
 			RetrievedChunk c = sorted.get(i);
 			ranked.add(new RetrievedChunk(c.chunkId(), c.docKey(), c.version(), c.title(), c.sectionPath(), c.language(),
-					c.accessLevel(), c.content(), c.score(), i + 1));
+					c.status(), c.accessLevel(), c.scopeDepartment(), c.content(), c.score(), i + 1));
 		}
 		return ranked;
 	}

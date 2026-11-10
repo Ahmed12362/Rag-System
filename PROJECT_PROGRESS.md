@@ -116,6 +116,23 @@
   `docs/rag-strategies.md` §5.
 - Manual testing kit: `scripts/ask.ps1` + README §7 (startup order, 10 questions with expected answers).
 
+### Task 6.1: Guardrails and simulated login (Milestone 6), 2026-11-10
+- Flyway V5 `app_user`: 6 simulated users (employee E-1001, qa E-1002, manager E-1000, hr E-1003 HR_ADMIN/CONFIDENTIAL,
+  finance E-1004, contractor CT-0001 PUBLIC). Password hash NULL in the migration; `DemoUserProvisioner` writes BCrypt hashes
+  from `APP_DEMO_PASSWORD` (`.env` only) at startup.
+- Spring Security (`security` package): HTTP Basic, stateless, `/api/**` authenticated, everything else denied except health/info;
+  RFC 9457 401/403 bodies; health details only for HR_ADMIN; `GET /api/v1/me`. Identity only from the principal; the
+  configured dev user was removed. `UserContext` now carries `maxAccessLevel` (visible levels derived from it).
+- Guardrails (`rag.guardrail`): `InjectionDetector` (narrow EN/AR/Egyptian rules on normalized text; question = DIRECT rules,
+  passages = DIRECT minus SECRET_REQUEST plus AI-addressed rules, sentence-level redaction), `AccessPolicy` (re-check of every
+  chunk before context construction), `OutputGuard` (system-prompt fragments, credential patterns, configured secret values),
+  `GuardrailProperties` (input BLOCK|FLAG|OFF, context REDACT|FLAG|OFF, output on/off).
+- Contract: `RetrievedChunk` gains status and scope department; `RagResult` gains `passageChecks` (per retrieved chunk:
+  CLEAN/FLAGGED/REDACTED/REMOVED/DENIED + rule ids + sentences removed) and `callCounts` (embedding calls, embedding cache
+  hits, chat calls, tokens). Both are stored in the trace with the user's role/department/access level.
+- `retrieved` stays the raw retrieval, so retrieval metrics and the planted SEC-09..11 documents are unaffected; corpus files are unchanged.
+- Tests: 165/165 (61 new). Real Gemini check: 10 questions, all as expected, 4 new embeddings (details: `docs/rag-strategies.md` §6).
+
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
 - D2: Flyway owns the schema (`ddl-auto=validate`, no Spring AI auto schema).
@@ -161,6 +178,13 @@
   requests for minutes on quota errors).
 - D34: Naive abstention = no evidence (no LLM call) or the model's INSUFFICIENT_CONTEXT marker; no score threshold until calibrated
   on the benchmark. Traces store the prompt version and ids/scores, not retrieved text or the system prompt.
+- D35: Simulated users with HTTP Basic + BCrypt (stateless; no sessions, so CSRF off). One shared demo password from `.env`;
+  hashes written at startup, never in migrations. `app_user.employee_code` is not an FK (accounts survive a reseed).
+- D36: Access control order: SQL filters (primary) → `AccessPolicy` re-check before context construction (second) → never
+  answer-side. Injection detection is defense in depth with narrow patterns; retrieved text is always wrapped as untrusted data.
+- D37: Indirect injection is redacted per SENTENCE, not per document, so legitimate facts in a planted document survive
+  (e.g. the lost-badge rule in the parking notice). Raw retrieval is kept for metrics; screening outcomes are recorded per
+  passage. FLAG modes let the benchmark measure the model's own resistance separately from the screening layer.
 - D18: The HRIS `data` module is internally one module. Sub-capabilities may reference each other's entities (e.g. `LeaveRequest → Employee`);
   other modules must go through services (ArchUnit rule 1).
 
@@ -168,10 +192,17 @@
 - The old Gemini key (from the deleted `application.properties`) must be revoked in Google AI Studio, if not done already.
 - Token metrics must record thinking tokens (`thoughtsTokenCount`) separately.
 - Maven prints harmless 401 warnings for two Flyway community repositories declared in Flyway's POM.
-- Actuator health shows full details (local dev only). Restrict in Milestone 6.
+- HTTP Basic sends the password with every request and runs a BCrypt check (strength 10) on each one, which adds some latency (not measured separately). Fine for a local demo, but not for production. Use HTTPS
+  and a token/OIDC flow there.
+- Injection patterns are a narrow, English/Arabic list: paraphrased or other-language attacks can pass the input check (then
+  only the grounded prompt and access control apply). Measured in the benchmark (M6.2/M9).
+- The output check catches verbatim prompt fragments and secret values, not translated or paraphrased leaks.
 
 ## Test status
-- `mvnw test` (Task 5.1 final): **104 tests, 104 passed, 0 failed** (adds RagUnitTest 4, RagFlowIntegrationTest 5,
+- `mvnw clean verify` (Task 6.1 final): **165 tests, 165 passed, 0 failed** (adds GuardrailUnitTest 43, GuardrailFlowIntegrationTest 12,
+  SecurityIntegrationTest 6). False-positive checks on real data: of the 100 benchmark questions only SEC-07/SEC-08 are flagged;
+  of the 227 corpus documents only the 5 planted sentences are redacted.
+- Previously `mvnw test` (Task 5.1 final): **104 tests, 104 passed, 0 failed** (adds RagUnitTest 4, RagFlowIntegrationTest 5,
   GenerationServiceTest 1). Secret scan of 373 files: none.
 - Previously (Task 4.1): 94 tests, 94 passed, 0 failed (adds SectionChunkerTest 6, EmbeddingServiceTest 5,
   IngestionIntegrationTest 1). Secret scan of 353 files: none.
@@ -184,5 +215,6 @@
   **The compose DB currently holds the STANDARD dataset.**
 
 ## Next proposed task
-- User manual testing of the chat (README §7). Regenerate the AI Studio key afterwards (it was shared in chat).
-- Then Milestone 6 (guardrails + security + minimal benchmark metrics/experiment persistence).
+- Task 6.2 (awaiting approval): minimal benchmark runner, metrics (retrieval, answer, security, cost from `callCounts`) and
+  experiment persistence.
+- Regenerate the AI Studio key after submission (it was shared in chat).

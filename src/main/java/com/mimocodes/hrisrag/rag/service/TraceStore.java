@@ -17,6 +17,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Persists one row per request. Stores ids, scores, timings, usage and decisions, but NOT the retrieved text, the
  * context or the system prompt (only its version): traces stay small and do not duplicate restricted content.
+ * Per-passage guardrail outcomes (retrieved / flagged / redacted / removed / denied, with rule ids) and the separate
+ * embedding and chat call counts are stored for the benchmark.
  */
 @Repository
 public class TraceStore {
@@ -35,8 +37,12 @@ public class TraceStore {
 		trace.put("citations", r.citations());
 		trace.put("retrieved", r.retrieved().stream().map(c -> Map.of("rank", c.rank(), "chunkId", c.chunkId(),
 				"docKey", c.docKey(), "version", c.version(), "section", c.sectionPath(), "score", c.score())).toList());
+		trace.put("passageChecks", r.passageChecks());
 		trace.put("contextChars", r.contextSent() == null ? 0 : r.contextSent().length());
 		trace.put("modelCalls", r.modelCalls());
+		trace.put("callCounts", r.callCounts());
+		trace.put("user", Map.of("role", query.user().role(), "department", query.user().department(),
+				"maxAccessLevel", query.user().maxAccessLevel()));
 		trace.put("guardrails", r.guardrails());
 		trace.put("timings", r.timings());
 		jdbc.update("""

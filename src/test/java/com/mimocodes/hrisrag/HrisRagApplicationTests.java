@@ -41,8 +41,12 @@ class HrisRagApplicationTests extends IntegrationTestBase {
 
 	@Test
 	void healthEndpointIsUpIncludingDatabase() throws Exception {
+		// Details (including the db component) are shown to an authenticated HR_ADMIN only (Task 6.1).
+		String hr = "Basic " + java.util.Base64.getEncoder()
+				.encodeToString(("hr:" + DEMO_PASSWORD).getBytes(java.nio.charset.StandardCharsets.UTF_8));
 		HttpResponse<String> response = HttpClient.newHttpClient().send(
-				HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/actuator/health")).build(),
+				HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/actuator/health"))
+						.header("Authorization", hr).build(),
 				HttpResponse.BodyHandlers.ofString());
 
 		assertThat(response.statusCode()).isEqualTo(200);

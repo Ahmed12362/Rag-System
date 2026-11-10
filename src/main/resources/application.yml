@@ -56,10 +56,12 @@ hrisrag:
     chat-model: gemini-3.5-flash-lite   # answering model (D5)
     temperature: 0.0
     generation-timeout: 60s
-    dev-user:                          # TEMPORARY server-side identity until Spring Security (M6); never read from requests
-      employee-code: E-1001
-      role: EMPLOYEE
-      department: D-ENG
+  guardrails:
+    input-injection: BLOCK          # BLOCK | FLAG | OFF  (direct prompt injection in the question)
+    context-screening: REDACT       # REDACT | FLAG | OFF (instruction-like sentences inside retrieved passages)
+    output-check: true              # withhold answers that leak the system prompt or a secret
+  security:
+    demo-password: ${APP_DEMO_PASSWORD:}   # shared password of the simulated users; .env only, stored as BCrypt
   embedding:
     model: gemini-embedding-001     # same model for documents and queries (D5); changing it requires a full re-embed
     dimensions: 768
@@ -80,4 +82,5 @@ management:
         include: health,info
   endpoint:
     health:
-      show-details: always        # local development only; restrict when security is added (M6)
+      show-details: when-authorized   # public probe shows only UP/DOWN; details for an authenticated HR_ADMIN
+      roles: HR_ADMIN

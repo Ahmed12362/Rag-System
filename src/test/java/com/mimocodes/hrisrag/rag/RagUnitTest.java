@@ -16,7 +16,7 @@ class RagUnitTest {
 
 	private static RetrievedChunk chunk(int rank, String content) {
 		return new RetrievedChunk(100 + rank, "DOC-" + rank, "1.0", "Title " + rank, "Title " + rank + " > 1. Section",
-				"en", "INTERNAL", content, 0.9 - rank * 0.01, rank);
+				"en", "ACTIVE", "INTERNAL", null, content, 0.9 - rank * 0.01, rank);
 	}
 
 	@Test

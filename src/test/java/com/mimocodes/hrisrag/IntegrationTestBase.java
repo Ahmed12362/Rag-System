@@ -10,6 +10,10 @@ import org.springframework.context.annotation.Import;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
 		"spring.ai.google.genai.api-key=test-placeholder",
-		"spring.ai.google.genai.embedding.api-key=test-placeholder" })
+		"spring.ai.google.genai.embedding.api-key=test-placeholder",
+		"hrisrag.security.demo-password=" + IntegrationTestBase.DEMO_PASSWORD })
 public abstract class IntegrationTestBase {
+
+	/** Test-only demo password for the simulated users (the real one lives in .env). */
+	protected static final String DEMO_PASSWORD = "test-demo-password-1";
 }

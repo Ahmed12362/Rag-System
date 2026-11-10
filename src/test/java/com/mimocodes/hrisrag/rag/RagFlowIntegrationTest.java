@@ -37,9 +37,9 @@ import com.mimocodes.hrisrag.testsupport.FakeModels.ScriptedChatModel;
 @Import(FakeModels.Config.class)
 class RagFlowIntegrationTest extends IntegrationTestBase {
 
-	static final UserContext EMPLOYEE = new UserContext("E-1001", "EMPLOYEE", "D-ENG");
-	static final UserContext HR = new UserContext("E-1003", "HR_ADMIN", "D-HR");
-	static final UserContext CS_AGENT = new UserContext("E-2300", "EMPLOYEE", "D-CS");
+	static final UserContext EMPLOYEE = new UserContext("E-1001", "EMPLOYEE", "D-ENG", "INTERNAL");
+	static final UserContext HR = new UserContext("E-1003", "HR_ADMIN", "D-HR", "CONFIDENTIAL");
+	static final UserContext CS_AGENT = new UserContext("E-2300", "EMPLOYEE", "D-CS", "INTERNAL");
 
 	@Autowired IngestionService ingestion;
 	@Autowired VectorRetriever retriever;
@@ -164,15 +164,20 @@ class RagFlowIntegrationTest extends IntegrationTestBase {
 		assertThat(hybrid.statusCode()).isEqualTo(400);
 		assertThat(hybrid.body()).contains("not available yet");
 
-		var strategies = HttpClient.newHttpClient().send(HttpRequest.newBuilder(uri("/api/v1/strategies")).build(),
-				HttpResponse.BodyHandlers.ofString());
+		var strategies = HttpClient.newHttpClient().send(HttpRequest.newBuilder(uri("/api/v1/strategies"))
+				.header("Authorization", basic("employee")).build(), HttpResponse.BodyHandlers.ofString());
 		assertThat(strategies.body()).contains("{\"id\":\"NAIVE\",\"available\":true");
 	}
 
 	private HttpResponse<String> post(String json) throws Exception {
 		return HttpClient.newHttpClient().send(HttpRequest.newBuilder(uri("/api/v1/chat"))
-				.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build(),
-				HttpResponse.BodyHandlers.ofString());
+				.header("Content-Type", "application/json").header("Authorization", basic("employee"))
+				.POST(HttpRequest.BodyPublishers.ofString(json)).build(), HttpResponse.BodyHandlers.ofString());
+	}
+
+	static String basic(String user) {
+		return "Basic " + java.util.Base64.getEncoder()
+				.encodeToString((user + ":" + DEMO_PASSWORD).getBytes(java.nio.charset.StandardCharsets.UTF_8));
 	}
 
 	private URI uri(String path) {
