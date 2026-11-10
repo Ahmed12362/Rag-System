@@ -147,6 +147,19 @@
   Findings: English questions sometimes answered in Arabic (language_match 0.71); multi-hop misses the second fact; tool case
   fails as expected (`docs/benchmark-methodology.md` §8).
 
+### Task 7.1: Hybrid RAG (Milestone 7), 2026-11-10
+- Refactor: `GroundedRagStrategy` holds the shared pipeline (guardrails, prompt, citations, trace). Naive and Hybrid implement
+  only `retrieve`. All Naive and guardrail tests still pass unchanged.
+- `AccessSql`: one access-filter SQL fragment for every retriever. `KeywordRetriever`: PostgreSQL full-text search on the existing
+  `search_vector` (no re-embedding); Latin and Arabic parts are queried with the `english` and `arabic` configurations; OR semantics;
+  `ts_rank_cd`. `RankFusion.rrf` (k=60, 20 candidates per side), deterministic ties.
+- `RetrievedChunk` gains `vectorRank` / `keywordRank` (API, trace, benchmark detail, `ask.ps1 -Strategy HYBRID`).
+- Benchmark: `--hrisrag.benchmark.strategy=HYBRID`, `--hrisrag.benchmark.compare-with=<id>`. The comparison is recomputed on the
+  common cases only.
+- Tests 183/183 (+9). Real comparison on the same 10 cases (experiment 2 vs 1, 0 new embeddings, 9 chat calls): case_pass 0.80
+  for both; MHOP-EN-01 fixed, XLING-AR2EN-02 regressed (RRF credits weak double-matches over a top single match when keyword
+  search is blind cross-lingually); language_match 0.71 → 1.00; MRR 0.92 → 0.68 (`docs/rag-strategies.md` §7).
+
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
 - D2: Flyway owns the schema (`ddl-auto=validate`, no Spring AI auto schema).
@@ -203,6 +216,10 @@
   documents. STRUCTURED cases are reported in a separate `TOOLS_REQUIRED` scope so tool-less strategies are not misread.
 - D39: Benchmark cases stay in the versioned YAML, guarded by a registered checksum, instead of a `benchmark_case` table.
   Raw per-question results are stored, and aggregates are always recomputed from them (resume-safe).
+- D40: Strategies share one grounded pipeline (`GroundedRagStrategy`); a strategy only defines retrieval (Naive, Hybrid) or,
+  later, its own loop (Agentic). Benchmark differences are then attributable to retrieval.
+- D41: Hybrid = vector + PostgreSQL full-text search fused by unweighted RRF (k=60, 20 + 20 candidates) as the textbook
+  baseline. Weighting and depth are tuned only on the full benchmark, never on the 10-case smoke set.
 - D18: The HRIS `data` module is internally one module. Sub-capabilities may reference each other's entities (e.g. `LeaveRequest → Employee`);
   other modules must go through services (ArchUnit rule 1).
 
@@ -217,11 +234,15 @@
 - The output check catches verbatim prompt fragments and secret values, not translated or paraphrased leaks.
 - Naive sometimes answers English questions in Arabic (found by the benchmark, Task 6.2). Candidate: prompt `grounded-v2`
   that names the detected question language. Needs approval and a benchmark re-run.
+- Hybrid's unweighted RRF hurts cross-lingual questions (keyword search cannot match across languages). Candidates: weighted
+  RRF, language-aware fusion, shallower candidate lists. Measure them on the full benchmark.
 - Only a 10-case real benchmark has been run (quota). The full 100-case run (`--hrisrag.benchmark.limit=0`) costs about
   85 embeddings and about 95 chat calls.
 
 ## Test status
-- `mvnw clean verify` (Task 6.2 final): **174 tests, 174 passed, 0 failed** (adds EvaluationUnitTest 4,
+- `mvnw clean verify` (Task 7.1 final): **183 tests, 183 passed, 0 failed** (adds HybridUnitTest 2, HybridIntegrationTest 6,
+  BenchmarkIntegrationTest +1 comparison).
+- Previously `mvnw clean verify` (Task 6.2 final): **174 tests, 174 passed, 0 failed** (adds EvaluationUnitTest 4,
   BenchmarkIntegrationTest 5).
 - Previously `mvnw clean verify` (Task 6.1 final): **165 tests, 165 passed, 0 failed** (adds GuardrailUnitTest 43, GuardrailFlowIntegrationTest 12,
   SecurityIntegrationTest 6). False-positive checks on real data: of the 100 benchmark questions only SEC-07/SEC-08 are flagged;
@@ -239,6 +260,8 @@
   **The compose DB currently holds the STANDARD dataset.**
 
 ## Next proposed task
-- Milestone 7 (Hybrid RAG: keyword + vector fusion), or first a small `grounded-v2` prompt fix for language following.
-  Both need approval.
+- Options, each needing approval:
+  - (a) Task 7.2: fusion tuning (weighted RRF / candidate depth) measured on a larger benchmark subset;
+  - (b) Milestone 8: Agentic RAG with authorized HRIS tools (fixes the TOOLS_REQUIRED cases);
+  - (c) a `grounded-v2` prompt fix for language following.
 - Regenerate the AI Studio key after submission (it was shared in chat).

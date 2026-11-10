@@ -31,7 +31,9 @@ Request:
 { "question": "How early must I request annual leave?", "strategy": "NAIVE", "conversationId": "c-1" }
 ```
 - `question`: required, 1–2000 characters.
-- `strategy`: optional, `NAIVE` (default), `HYBRID` or `AGENTIC`. Unavailable strategies → 400.
+- `strategy`: optional, `NAIVE` (default), `HYBRID` (Task 7.1) or `AGENTIC`. Unavailable strategies → 400. For HYBRID,
+  `retrieved[].score` is the fused RRF score, and `vectorRank` / `keywordRank` show the chunk's rank in each list (null = not in
+  that list).
 - `conversationId`: optional, ≤ 64 characters.
 - There is no user field: identity comes from the authenticated principal. Extra identity fields in the body are ignored.
 

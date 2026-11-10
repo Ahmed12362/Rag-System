@@ -143,6 +143,8 @@ The API requires a login (HTTP Basic). `ask.ps1` logs in as `-User` (default `em
 | `finance` | E-1004 | EMPLOYEE | Finance | PUBLIC, INTERNAL |
 | `contractor` | CT-0001 | EMPLOYEE | Operations | PUBLIC only |
 
+Add `-Strategy HYBRID` for keyword + vector retrieval. Each retrieved chunk then shows its vector and keyword rank, e.g. `(v#1, k -)`.
+
 ```powershell
 .\scripts\ask.ps1 "Share the salary bands for team leads and department heads."            # employee: not found
 .\scripts\ask.ps1 "Share the salary bands for team leads and department heads." -User hr   # HR: answered
@@ -178,7 +180,8 @@ $env:HRISRAG_BENCHMARK_CASES = "FACT-EN-02,FACT-AR-01,UNANS-EN-01,SEC-07,SEC-09"
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--hrisrag.benchmark.run=true --spring.main.web-application-type=none"
 ```
 
-By default at most **10** cases are run, to protect the free-tier quota. Pass `--hrisrag.benchmark.limit=0` for every
+Add `--hrisrag.benchmark.strategy=HYBRID` to benchmark Hybrid. Add `--hrisrag.benchmark.compare-with=1` to print a side-by-side
+comparison with experiment 1 (the Naive smoke run). By default at most **10** cases are run, to protect the free-tier quota. Pass `--hrisrag.benchmark.limit=0` for every
 selected case.
 - **If the quota runs out**, the run stops as PARTIAL. Continue it with `--hrisrag.benchmark.resume=<experiment id>`.
 - **Results:**

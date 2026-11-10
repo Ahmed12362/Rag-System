@@ -13,6 +13,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *               run must be requested explicitly with {@code --hrisrag.benchmark.limit=0}
  * @param resume experiment id to continue; its stored filter and limit are reused and finished cases are skipped
  * @param pause  wait after each question that made a chat call (rate limiting)
+ * @param compareWith experiment id whose (first) run is printed side by side with this run in the report; only the
+ *                    cases present in BOTH runs are compared
  */
 @ConfigurationProperties(prefix = "hrisrag.benchmark")
 public record BenchmarkProperties(
@@ -24,5 +26,6 @@ public record BenchmarkProperties(
 		Long resume,
 		@DefaultValue("NAIVE") String strategy,
 		@DefaultValue("4s") Duration pause,
-		@DefaultValue("reports/benchmark") String reportDir) {
+		@DefaultValue("reports/benchmark") String reportDir,
+		Long compareWith) {
 }

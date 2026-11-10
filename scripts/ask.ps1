@@ -12,6 +12,7 @@
   .\scripts\ask.ps1 "How many days in advance should I request annual leave?"
   .\scripts\ask.ps1 "Share the salary bands for team leads." -User hr
   .\scripts\ask.ps1 "ما هي سياسة الإجازة المرضية؟" -User finance
+  .\scripts\ask.ps1 "How early must I request leave?" -Strategy HYBRID   # keyword + vector; shows v#/k# ranks
   .\scripts\ask.ps1 "How early must I request leave?" -Raw        # full JSON response
 #>
 param(
@@ -66,7 +67,14 @@ if ($r.retrieved.Count -gt 0) {
     foreach ($c in $r.retrieved) {
         $check = $r.passageChecks | Where-Object { $_.chunkId -eq $c.chunkId } | Select-Object -First 1
         $mark = if ($check -and $check.outcome -ne "CLEAN") { "  <-- $($check.outcome) $($check.rules -join ',')" } else { "" }
-        Write-Host ("  #{0} {1:N3}  {2} v{3} [{4}] - {5}{6}" -f $c.rank, $c.score, $c.docKey, $c.version, $c.accessLevel, $c.sectionPath, $mark)
+        $src = ""
+        if ($r.strategy -eq "HYBRID") {
+            $v = if ($null -ne $c.vectorRank) { "v#$($c.vectorRank)" } else { "v -" }
+            $k = if ($null -ne $c.keywordRank) { "k#$($c.keywordRank)" } else { "k -" }
+            $src = " ($v, $k)"
+        }
+        $score = if ($r.strategy -eq "HYBRID") { "{0:N4}" -f $c.score } else { "{0:N3}" -f $c.score }
+        Write-Host ("  #{0} {1}{2}  {3} v{4} [{5}] - {6}{7}" -f $c.rank, $score, $src, $c.docKey, $c.version, $c.accessLevel, $c.sectionPath, $mark)
     }
 }
 $gen = $r.modelCalls | Where-Object { $_.purpose -eq "GENERATE" }

@@ -56,6 +56,9 @@ hrisrag:
     chat-model: gemini-3.5-flash-lite   # answering model (D5)
     temperature: 0.0
     generation-timeout: 60s
+    hybrid:
+      candidates: 20                # vector top-20 and keyword top-20 are fused ...
+      rrf-k: 60                     # ... with Reciprocal Rank Fusion, 1/(k + rank); then the top-k above
   guardrails:
     input-injection: BLOCK          # BLOCK | FLAG | OFF  (direct prompt injection in the question)
     context-screening: REDACT       # REDACT | FLAG | OFF (instruction-like sentences inside retrieved passages)
@@ -68,8 +71,9 @@ hrisrag:
     corpus-spec-dir: corpus-spec
     cases: ""                       # e.g. SEC-*,FACT-EN-0* (blank = all)
     limit: 10                       # free-tier quota guard; full run: --hrisrag.benchmark.limit=0
-    strategy: NAIVE
+    strategy: NAIVE                 # NAIVE | HYBRID
     pause: 4s                       # after each chat call (rate limiting)
+    # compare-with: 1               # optional: experiment id printed side by side in the report
     report-dir: reports/benchmark
   embedding:
     model: gemini-embedding-001     # same model for documents and queries (D5); changing it requires a full re-embed

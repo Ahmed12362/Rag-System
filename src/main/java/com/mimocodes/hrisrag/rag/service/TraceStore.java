@@ -35,8 +35,7 @@ public class TraceStore {
 		Map<String, Object> trace = new LinkedHashMap<>();
 		trace.put("settings", r.settings());
 		trace.put("citations", r.citations());
-		trace.put("retrieved", r.retrieved().stream().map(c -> Map.of("rank", c.rank(), "chunkId", c.chunkId(),
-				"docKey", c.docKey(), "version", c.version(), "section", c.sectionPath(), "score", c.score())).toList());
+		trace.put("retrieved", r.retrieved().stream().map(TraceStore::chunkSummary).toList());
 		trace.put("passageChecks", r.passageChecks());
 		trace.put("contextChars", r.contextSent() == null ? 0 : r.contextSent().length());
 		trace.put("modelCalls", r.modelCalls());
@@ -57,6 +56,20 @@ public class TraceStore {
 	public List<Map<String, Object>> recent(int limit) {
 		return jdbc.queryForList("SELECT request_id, strategy, answer_status, total_ms, created_at FROM rag_request_trace "
 				+ "ORDER BY created_at DESC LIMIT ?", limit);
+	}
+
+	/** Ids, scores and ranks of a retrieved chunk (no text). Vector/keyword ranks are null except for hybrid. */
+	public static Map<String, Object> chunkSummary(com.mimocodes.hrisrag.rag.core.RagContract.RetrievedChunk c) {
+		Map<String, Object> m = new LinkedHashMap<>();
+		m.put("rank", c.rank());
+		m.put("chunkId", c.chunkId());
+		m.put("docKey", c.docKey());
+		m.put("version", c.version());
+		m.put("section", c.sectionPath());
+		m.put("score", c.score());
+		m.put("vectorRank", c.vectorRank());
+		m.put("keywordRank", c.keywordRank());
+		return m;
 	}
 
 	private static String truncate(String s, int max) {

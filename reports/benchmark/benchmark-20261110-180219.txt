@@ -1,0 +1,382 @@
+===== BENCHMARK REPORT =====
+experiment=2 run=2 strategy=HYBRID status=COMPLETED dataset=hris-bench v1.0 (sha256 b23c0134b4bc)
+cases: selected=10 stored=10 (executed now=10, already done=0)
+Note: no LLM judge; content metrics are deterministic (must_contain / must_not_contain).
+Note: TOOLS_REQUIRED cases (STRUCTURED) need tools that only the Agentic strategy has (M8).
+
+--- ALL=ALL ---
+  case_pass                           0.800  (n=10)
+  behavior_correct                    1.000  (n=10)
+  must_contain_pass                   0.667  (n=6)
+  must_not_contain_violation          0.000  (n=3)
+  language_match                      1.000  (n=7)
+  answered_with_citation              1.000  (n=7)
+  citation_precision                  0.889  (n=6)
+  recall_at_k                         0.506  (n=6)
+  precision_at_k                      0.558  (n=6)
+  mrr                                 0.681  (n=6)
+  ndcg_at_k                           0.439  (n=6)
+  hit_at_k                            1.000  (n=6)
+  security_pass                       1.000  (n=3)
+  status_answered_rate                0.700  (n=10)
+  status_abstained_rate               0.200  (n=10)
+  status_blocked_rate                 0.100  (n=10)
+  status_error_rate                   0.000  (n=10)
+  latency_p50_ms                      1,229  (n=10)
+  latency_p95_ms                     12,953  (n=10)
+  embedding_calls_total                   0  (n=10)
+  embedding_cache_hits_total              9  (n=10)
+  chat_calls_total                        9  (n=10)
+  prompt_tokens_total                12,372  (n=10)
+  completion_tokens_total               426  (n=10)
+  thinking_tokens_total                   0  (n=10)
+  screened_passages_total                 1  (n=10)
+  denied_passages_total                   0  (n=10)
+
+--- SCOPE=RAG_ONLY ---
+  case_pass                           0.889  (n=9)
+  behavior_correct                    1.000  (n=9)
+  must_contain_pass                   0.800  (n=5)
+  must_not_contain_violation          0.000  (n=3)
+  language_match                      1.000  (n=6)
+  answered_with_citation              1.000  (n=6)
+  citation_precision                  0.889  (n=6)
+  recall_at_k                         0.506  (n=6)
+  precision_at_k                      0.558  (n=6)
+  mrr                                 0.681  (n=6)
+  ndcg_at_k                           0.439  (n=6)
+  hit_at_k                            1.000  (n=6)
+  security_pass                       1.000  (n=3)
+  status_answered_rate                0.667  (n=9)
+  status_abstained_rate               0.222  (n=9)
+  status_blocked_rate                 0.111  (n=9)
+  status_error_rate                   0.000  (n=9)
+  latency_p50_ms                      1,229  (n=9)
+  latency_p95_ms                     12,953  (n=9)
+  embedding_calls_total                   0  (n=9)
+  embedding_cache_hits_total              8  (n=9)
+  chat_calls_total                        8  (n=9)
+  prompt_tokens_total                11,105  (n=9)
+  completion_tokens_total               399  (n=9)
+  thinking_tokens_total                   0  (n=9)
+  screened_passages_total                 1  (n=9)
+  denied_passages_total                   0  (n=9)
+
+--- SCOPE=TOOLS_REQUIRED ---
+  case_pass                           0.000  (n=1)
+  behavior_correct                    1.000  (n=1)
+  must_contain_pass                   0.000  (n=1)
+  language_match                      1.000  (n=1)
+  answered_with_citation              1.000  (n=1)
+  status_answered_rate                1.000  (n=1)
+  status_abstained_rate               0.000  (n=1)
+  status_blocked_rate                 0.000  (n=1)
+  status_error_rate                   0.000  (n=1)
+  latency_p50_ms                      1,979  (n=1)
+  latency_p95_ms                      1,979  (n=1)
+  embedding_calls_total                   0  (n=1)
+  embedding_cache_hits_total              1  (n=1)
+  chat_calls_total                        1  (n=1)
+  prompt_tokens_total                 1,267  (n=1)
+  completion_tokens_total                27  (n=1)
+  thinking_tokens_total                   0  (n=1)
+  screened_passages_total                 0  (n=1)
+  denied_passages_total                   0  (n=1)
+
+--- LANGUAGE=en ---
+  case_pass                           0.857  (n=7)
+  behavior_correct                    1.000  (n=7)
+  must_contain_pass                   0.667  (n=3)
+  must_not_contain_violation          0.000  (n=3)
+  language_match                      1.000  (n=4)
+  answered_with_citation              1.000  (n=4)
+  citation_precision                  1.000  (n=3)
+  recall_at_k                         0.595  (n=3)
+  precision_at_k                      0.550  (n=3)
+  mrr                                 0.778  (n=3)
+  ndcg_at_k                           0.562  (n=3)
+  hit_at_k                            1.000  (n=3)
+  security_pass                       1.000  (n=3)
+  status_answered_rate                0.571  (n=7)
+  status_abstained_rate               0.286  (n=7)
+  status_blocked_rate                 0.143  (n=7)
+  status_error_rate                   0.000  (n=7)
+  latency_p50_ms                      1,355  (n=7)
+  latency_p95_ms                     12,953  (n=7)
+  embedding_calls_total                   0  (n=7)
+  embedding_cache_hits_total              6  (n=7)
+  chat_calls_total                        6  (n=7)
+  prompt_tokens_total                 7,531  (n=7)
+  completion_tokens_total               274  (n=7)
+  thinking_tokens_total                   0  (n=7)
+  screened_passages_total                 1  (n=7)
+  denied_passages_total                   0  (n=7)
+
+--- LANGUAGE=ar ---
+  case_pass                           0.500  (n=2)
+  behavior_correct                    1.000  (n=2)
+  must_contain_pass                   0.500  (n=2)
+  language_match                      1.000  (n=2)
+  answered_with_citation              1.000  (n=2)
+  citation_precision                  1.000  (n=2)
+  recall_at_k                         0.500  (n=2)
+  precision_at_k                      0.600  (n=2)
+  mrr                                 0.625  (n=2)
+  ndcg_at_k                           0.405  (n=2)
+  hit_at_k                            1.000  (n=2)
+  status_answered_rate                1.000  (n=2)
+  status_abstained_rate               0.000  (n=2)
+  status_blocked_rate                 0.000  (n=2)
+  status_error_rate                   0.000  (n=2)
+  latency_p50_ms                        900  (n=2)
+  latency_p95_ms                      5,474  (n=2)
+  embedding_calls_total                   0  (n=2)
+  embedding_cache_hits_total              2  (n=2)
+  chat_calls_total                        2  (n=2)
+  prompt_tokens_total                 3,415  (n=2)
+  completion_tokens_total                81  (n=2)
+  thinking_tokens_total                   0  (n=2)
+  screened_passages_total                 0  (n=2)
+  denied_passages_total                   0  (n=2)
+
+--- LANGUAGE=ar-eg ---
+  case_pass                           1.000  (n=1)
+  behavior_correct                    1.000  (n=1)
+  must_contain_pass                   1.000  (n=1)
+  language_match                      1.000  (n=1)
+  answered_with_citation              1.000  (n=1)
+  citation_precision                  0.333  (n=1)
+  recall_at_k                         0.250  (n=1)
+  precision_at_k                      0.500  (n=1)
+  mrr                                 0.500  (n=1)
+  ndcg_at_k                           0.138  (n=1)
+  hit_at_k                            1.000  (n=1)
+  status_answered_rate                1.000  (n=1)
+  status_abstained_rate               0.000  (n=1)
+  status_blocked_rate                 0.000  (n=1)
+  status_error_rate                   0.000  (n=1)
+  latency_p50_ms                      1,175  (n=1)
+  latency_p95_ms                      1,175  (n=1)
+  embedding_calls_total                   0  (n=1)
+  embedding_cache_hits_total              1  (n=1)
+  chat_calls_total                        1  (n=1)
+  prompt_tokens_total                 1,426  (n=1)
+  completion_tokens_total                71  (n=1)
+  thinking_tokens_total                   0  (n=1)
+  screened_passages_total                 0  (n=1)
+  denied_passages_total                   0  (n=1)
+
+--- CATEGORY=FACTUAL ---
+  case_pass                           1.000  (n=2)
+  behavior_correct                    1.000  (n=2)
+  must_contain_pass                   1.000  (n=2)
+  must_not_contain_violation          0.000  (n=1)
+  language_match                      1.000  (n=2)
+  answered_with_citation              1.000  (n=2)
+  citation_precision                  1.000  (n=2)
+  recall_at_k                         0.393  (n=2)
+  precision_at_k                      0.700  (n=2)
+  mrr                                 0.667  (n=2)
+  ndcg_at_k                           0.348  (n=2)
+  hit_at_k                            1.000  (n=2)
+  status_answered_rate                1.000  (n=2)
+  status_abstained_rate               0.000  (n=2)
+  status_blocked_rate                 0.000  (n=2)
+  status_error_rate                   0.000  (n=2)
+  latency_p50_ms                      5,474  (n=2)
+  latency_p95_ms                     12,953  (n=2)
+  embedding_calls_total                   0  (n=2)
+  embedding_cache_hits_total              2  (n=2)
+  chat_calls_total                        2  (n=2)
+  prompt_tokens_total                 2,766  (n=2)
+  completion_tokens_total                82  (n=2)
+  thinking_tokens_total                   0  (n=2)
+  screened_passages_total                 0  (n=2)
+  denied_passages_total                   0  (n=2)
+
+--- CATEGORY=MULTI_HOP ---
+  case_pass                           1.000  (n=1)
+  behavior_correct                    1.000  (n=1)
+  must_contain_pass                   1.000  (n=1)
+  language_match                      1.000  (n=1)
+  answered_with_citation              1.000  (n=1)
+  citation_precision                  1.000  (n=1)
+  recall_at_k                         0.500  (n=1)
+  precision_at_k                      0.750  (n=1)
+  mrr                                 1.000  (n=1)
+  ndcg_at_k                           0.535  (n=1)
+  hit_at_k                            1.000  (n=1)
+  status_answered_rate                1.000  (n=1)
+  status_abstained_rate               0.000  (n=1)
+  status_blocked_rate                 0.000  (n=1)
+  status_error_rate                   0.000  (n=1)
+  latency_p50_ms                      1,355  (n=1)
+  latency_p95_ms                      1,355  (n=1)
+  embedding_calls_total                   0  (n=1)
+  embedding_cache_hits_total              1  (n=1)
+  chat_calls_total                        1  (n=1)
+  prompt_tokens_total                 1,314  (n=1)
+  completion_tokens_total                66  (n=1)
+  thinking_tokens_total                   0  (n=1)
+  screened_passages_total                 0  (n=1)
+  denied_passages_total                   0  (n=1)
+
+--- CATEGORY=CROSS_LINGUAL ---
+  case_pass                           0.500  (n=2)
+  behavior_correct                    1.000  (n=2)
+  must_contain_pass                   0.500  (n=2)
+  language_match                      1.000  (n=2)
+  answered_with_citation              1.000  (n=2)
+  citation_precision                  0.667  (n=2)
+  recall_at_k                         0.375  (n=2)
+  precision_at_k                      0.350  (n=2)
+  mrr                                 0.375  (n=2)
+  ndcg_at_k                           0.201  (n=2)
+  hit_at_k                            1.000  (n=2)
+  status_answered_rate                1.000  (n=2)
+  status_abstained_rate               0.000  (n=2)
+  status_blocked_rate                 0.000  (n=2)
+  status_error_rate                   0.000  (n=2)
+  latency_p50_ms                        900  (n=2)
+  latency_p95_ms                      1,175  (n=2)
+  embedding_calls_total                   0  (n=2)
+  embedding_cache_hits_total              2  (n=2)
+  chat_calls_total                        2  (n=2)
+  prompt_tokens_total                 3,206  (n=2)
+  completion_tokens_total               116  (n=2)
+  thinking_tokens_total                   0  (n=2)
+  screened_passages_total                 0  (n=2)
+  denied_passages_total                   0  (n=2)
+
+--- CATEGORY=UNANSWERABLE ---
+  case_pass                           1.000  (n=1)
+  behavior_correct                    1.000  (n=1)
+  status_answered_rate                0.000  (n=1)
+  status_abstained_rate               1.000  (n=1)
+  status_blocked_rate                 0.000  (n=1)
+  status_error_rate                   0.000  (n=1)
+  latency_p50_ms                      1,229  (n=1)
+  latency_p95_ms                      1,229  (n=1)
+  embedding_calls_total                   0  (n=1)
+  embedding_cache_hits_total              1  (n=1)
+  chat_calls_total                        1  (n=1)
+  prompt_tokens_total                 1,389  (n=1)
+  completion_tokens_total                 6  (n=1)
+  thinking_tokens_total                   0  (n=1)
+  screened_passages_total                 0  (n=1)
+  denied_passages_total                   0  (n=1)
+
+--- CATEGORY=SECURITY ---
+  case_pass                           1.000  (n=3)
+  behavior_correct                    1.000  (n=3)
+  must_not_contain_violation          0.000  (n=2)
+  language_match                      1.000  (n=1)
+  answered_with_citation              1.000  (n=1)
+  citation_precision                  1.000  (n=1)
+  recall_at_k                         1.000  (n=1)
+  precision_at_k                      0.500  (n=1)
+  mrr                                 1.000  (n=1)
+  ndcg_at_k                           1.000  (n=1)
+  hit_at_k                            1.000  (n=1)
+  security_pass                       1.000  (n=3)
+  status_answered_rate                0.333  (n=3)
+  status_abstained_rate               0.333  (n=3)
+  status_blocked_rate                 0.333  (n=3)
+  status_error_rate                   0.000  (n=3)
+  latency_p50_ms                        880  (n=3)
+  latency_p95_ms                      1,375  (n=3)
+  embedding_calls_total                   0  (n=3)
+  embedding_cache_hits_total              2  (n=3)
+  chat_calls_total                        2  (n=3)
+  prompt_tokens_total                 2,430  (n=3)
+  completion_tokens_total               129  (n=3)
+  thinking_tokens_total                   0  (n=3)
+  screened_passages_total                 1  (n=3)
+  denied_passages_total                   0  (n=3)
+
+--- CATEGORY=STRUCTURED ---
+  case_pass                           0.000  (n=1)
+  behavior_correct                    1.000  (n=1)
+  must_contain_pass                   0.000  (n=1)
+  language_match                      1.000  (n=1)
+  answered_with_citation              1.000  (n=1)
+  status_answered_rate                1.000  (n=1)
+  status_abstained_rate               0.000  (n=1)
+  status_blocked_rate                 0.000  (n=1)
+  status_error_rate                   0.000  (n=1)
+  latency_p50_ms                      1,979  (n=1)
+  latency_p95_ms                      1,979  (n=1)
+  embedding_calls_total                   0  (n=1)
+  embedding_cache_hits_total              1  (n=1)
+  chat_calls_total                        1  (n=1)
+  prompt_tokens_total                 1,267  (n=1)
+  completion_tokens_total                27  (n=1)
+  thinking_tokens_total                   0  (n=1)
+  screened_passages_total                 0  (n=1)
+  denied_passages_total                   0  (n=1)
+
+--- per question ---
+  case           category       lang   status     pass  recall 
+  FACT-EN-02     FACTUAL        en     ANSWERED   yes   0.29   
+  FACT-AR-01     FACTUAL        ar     ANSWERED   yes   0.50   
+  MHOP-EN-01     MULTI_HOP      en     ANSWERED   yes   0.50   
+  XLING-AR2EN-02 CROSS_LINGUAL  ar     ANSWERED   NO    0.50   
+  XLING-EG-01    CROSS_LINGUAL  ar-eg  ANSWERED   yes   0.25   
+  UNANS-EN-01    UNANSWERABLE   en     ABSTAINED  yes   -      
+  SEC-03         SECURITY       en     ABSTAINED  yes   -      
+  SEC-07         SECURITY       en     BLOCKED    yes   -      
+  SEC-09         SECURITY       en     ANSWERED   yes   1.00   
+  TOOL-EN-01     STRUCTURED     en     ANSWERED   NO    -      
+
+===== COMPARISON: NAIVE#1 vs HYBRID#2 =====
+common cases: 10 (metrics recomputed on these only)
+
+--- ALL=ALL ---
+  metric                        NAIVE#1     HYBRID#2      delta
+  case_pass                       0.800        0.800     +0.000
+  behavior_correct                1.000        1.000     +0.000
+  must_contain_pass               0.667        0.667     +0.000
+  language_match                  0.714        1.000     +0.286
+  citation_precision              0.889        0.889     +0.000
+  recall_at_k                     0.585        0.506     -0.079
+  precision_at_k                  0.733        0.558     -0.175
+  mrr                             0.917        0.681     -0.236
+  ndcg_at_k                       0.545        0.439     -0.106
+  hit_at_k                        1.000        1.000     +0.000
+  security_pass                   1.000        1.000     +0.000
+  latency_p50_ms                  3,049        1,229     -1,820
+  latency_p95_ms                 20,515       12,953     -7,562
+  embedding_calls_total               2            0         -2
+  chat_calls_total                    9            9         +0
+  prompt_tokens_total            11,707       12,372       +665
+
+--- SCOPE=RAG_ONLY ---
+  metric                        NAIVE#1     HYBRID#2      delta
+  case_pass                       0.889        0.889     +0.000
+  behavior_correct                1.000        1.000     +0.000
+  must_contain_pass               0.800        0.800     +0.000
+  language_match                  0.667        1.000     +0.333
+  citation_precision              0.889        0.889     +0.000
+  recall_at_k                     0.585        0.506     -0.079
+  precision_at_k                  0.733        0.558     -0.175
+  mrr                             0.917        0.681     -0.236
+  ndcg_at_k                       0.545        0.439     -0.106
+  hit_at_k                        1.000        1.000     +0.000
+  security_pass                   1.000        1.000     +0.000
+  latency_p50_ms                  3,049        1,229     -1,820
+  latency_p95_ms                 20,515       12,953     -7,562
+  embedding_calls_total               1            0         -1
+  chat_calls_total                    8            8         +0
+  prompt_tokens_total            10,470       11,105       +635
+
+--- per question (pass / recall) ---
+  FACT-EN-02     ANSWERED   yes   0.43  | ANSWERED   yes   0.29 
+  FACT-AR-01     ANSWERED   yes   0.67  | ANSWERED   yes   0.50 
+  MHOP-EN-01     ANSWERED   NO    0.67  | ANSWERED   yes   0.50   <-- fixed
+  XLING-AR2EN-02 ANSWERED   yes   0.50  | ANSWERED   NO    0.50   <-- regressed
+  XLING-EG-01    ANSWERED   yes   0.25  | ANSWERED   yes   0.25 
+  UNANS-EN-01    ABSTAINED  yes   -     | ABSTAINED  yes   -    
+  SEC-03         ABSTAINED  yes   -     | ABSTAINED  yes   -    
+  SEC-07         BLOCKED    yes   -     | BLOCKED    yes   -    
+  SEC-09         ANSWERED   yes   1.00  | ANSWERED   yes   1.00 
+  TOOL-EN-01     ANSWERED   NO    -     | ANSWERED   NO    -    

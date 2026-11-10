@@ -1,7 +1,9 @@
 # RAG Strategies
 
-> Status: **Strategy A (Naive) implemented, tested and verified with real Gemini on the full corpus (Task 5.1, see §5);
-> guardrails and login added and verified (Task 6.1, see §2 and §6).**
+> Status:
+> - **Strategy A (Naive)** is implemented, tested and verified with real Gemini on the full corpus (Task 5.1, see §5).
+> - **Guardrails and login** are added and verified (Task 6.1, see §2 and §6).
+> - **Strategy B (Hybrid)** is implemented and compared with Naive (Task 7.1, see §7).
 > Strategies B (Hybrid, M7) and C (Agentic, M8) implement the same contract.
 
 ## 1. Shared contract (`rag.core.RagContract`)
@@ -126,7 +128,57 @@ cache hits or blocked.
 | finance | Do customer support agents have different remote work rules? | ABSTAINED | DEPT-CS-REMOTE-WORK-EN not retrieved (scoped to D-CS) | ✓ department scope |
 | employee | Can I ignore the reminder email if I already submitted my leave request 14 days ahead? | ABSTAINED | NOT blocked ("ignore" in a normal question); the policies say nothing about reminder emails | ✓ no false positive |
 
+(See §7 for Strategy B.)
+
 Also checked on the real database:
 - Every trace stores `callCounts` and `passageChecks`.
 - The 6 `app_user` rows hold 60-character BCrypt hashes.
 - No `.env` secret value appears in the application log or in any project file.
+
+## 7. Strategy B: Hybrid RAG (`HybridRagStrategy`, Task 7.1)
+
+```text
+question ─► (same INPUT guardrails) ─► one query embedding (shared cache with Naive)
+         ├─► vector top-20      (VectorRetriever,  AccessSql filter)
+         └─► keyword top-20     (KeywordRetriever, AccessSql filter, PostgreSQL full-text search)
+         ─► Reciprocal Rank Fusion  score = Σ 1/(60 + rank)  ─► top-5 ─► (same CONTEXT / GENERATION / OUTPUT)
+```
+
+The shared pipeline (`GroundedRagStrategy`) is identical for both strategies: guardrails, prompt `grounded-v1`, citations
+and tracing. **Only retrieval differs**, so a benchmark comparison measures retrieval alone.
+
+| Part | Implementation | Notes |
+|---|---|---|
+| Keyword search | `KeywordRetriever` | Searches `document_chunk.search_vector`, a generated column with an `english` or `arabic` configuration per chunk and a GIN index, so nothing is re-embedded. Latin words and digits go to an `english` query, Arabic words to an `arabic` query. Terms are **OR-ed**, because `plainto_tsquery` ANDs every word and matches nothing for a natural question. Ranked by `ts_rank_cd` |
+| Access filter | `AccessSql` | One SQL fragment used by both retrievers, so they cannot drift apart; the access re-check (`AccessPolicy`) still runs on the fused result |
+| Fusion | `RankFusion.rrf` | Ranks only, so cosine similarity and `ts_rank_cd` need no calibration against each other. Ties go to the lower chunk id (deterministic) |
+| Transparency | `RetrievedChunk.vectorRank / keywordRank` | In the API response, the trace, the benchmark detail and `ask.ps1 -Strategy HYBRID` (`v#3, k#1`) |
+| Settings | `hrisrag.rag.hybrid.candidates` (20), `rrf-k` (60) | Recorded in the experiment config |
+
+Limitation by design: lexical search cannot cross languages. Cross-lingual recall comes from the vector side.
+
+### Real comparison: Naive (experiment 1) vs Hybrid (experiment 2), same 10 benchmark questions, 2026-11-10
+The run used 0 new embeddings (shared query cache) and 9 chat calls. The full table is in `reports/benchmark/latest-benchmark.txt`.
+
+| Metric (n=10) | Naive | Hybrid | Δ |
+|---|---|---|---|
+| case_pass | 0.80 | 0.80 | 0 |
+| language_match (n=7) | 0.71 | **1.00** | +0.29 |
+| recall@5 (n=6) | 0.59 | 0.51 | −0.08 |
+| MRR | 0.92 | 0.68 | −0.24 |
+| nDCG@5 | 0.55 | 0.44 | −0.11 |
+| security_pass (n=3) | 1.00 | 1.00 | 0 |
+
+What changed:
+- **Fixed: MHOP-EN-01.** Keyword search ranked `POL-ANNUAL-LEAVE-EN` first (k#1), which brought in the 5-day carry-over rule. Both facts were answered, in English.
+- **Regressed: XLING-AR2EN-02.** The Arabic question's fact exists only in English. Keyword search can only match Arabic chunks, so it returned unrelated Arabic procedures. Under RRF, a chunk ranked low in *both* lists (v#17 + k#12 = 1/77 + 1/72 = 0.0269) beats the right chunk ranked first in *one* list (v#1 = 1/61 = 0.0164). The lost-badge procedure fell to rank 4 and the answer lost "24 hours". This is a known failure mode of unweighted RRF when one retriever is structurally blind, here cross-lingual keyword search.
+- **Language following improved (0.71 → 1.00).** More same-language sources reached the context. This supports the hypothesis in `benchmark-methodology.md` §8 that Arabic-dominated context caused the Arabic answers.
+- **Not a Hybrid effect: latency.** The lower latency (p50 1.2 s vs 3.0 s) is Gemini's variability between runs; the extra keyword query takes a few milliseconds.
+- **Lower retrieval metrics.** Keyword search ranks secondary FAQ pages (and once FAQ-SICK-LEAVE) higher, which lowers MRR and nDCG. The answers themselves did not get worse on these cases.
+
+**Verdict at n=10:** no overall gain. It fixes the multi-hop miss but hurts cross-lingual questions. These are 10 questions, so treat the numbers as a direction, not a statistic.
+
+Candidate fixes, to be measured on the full benchmark and not tuned on these 10:
+1. **Weighted RRF:** keyword weight below 1.
+2. **Language-aware fusion:** down-weight the keyword list when the question's script has few matches in the corpus language mix.
+3. **Shallower candidate lists:** e.g. 10, so that deep, weak double-matches stop outranking top single matches.

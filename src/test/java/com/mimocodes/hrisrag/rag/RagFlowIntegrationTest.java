@@ -160,13 +160,14 @@ class RagFlowIntegrationTest extends IntegrationTestBase {
 		var tooLong = post("{\"question\":\"" + "x".repeat(2001) + "\"}");
 		assertThat(tooLong.statusCode()).isEqualTo(400);
 
-		var hybrid = post("{\"question\":\"hello\",\"strategy\":\"HYBRID\"}");
-		assertThat(hybrid.statusCode()).isEqualTo(400);
-		assertThat(hybrid.body()).contains("not available yet");
+		var agentic = post("{\"question\":\"hello\",\"strategy\":\"AGENTIC\"}");
+		assertThat(agentic.statusCode()).isEqualTo(400);
+		assertThat(agentic.body()).contains("not available yet");
 
 		var strategies = HttpClient.newHttpClient().send(HttpRequest.newBuilder(uri("/api/v1/strategies"))
 				.header("Authorization", basic("employee")).build(), HttpResponse.BodyHandlers.ofString());
-		assertThat(strategies.body()).contains("{\"id\":\"NAIVE\",\"available\":true");
+		assertThat(strategies.body()).contains("{\"id\":\"NAIVE\",\"available\":true")
+				.contains("{\"id\":\"HYBRID\",\"available\":true").contains("{\"id\":\"AGENTIC\",\"available\":false");
 	}
 
 	private HttpResponse<String> post(String json) throws Exception {

@@ -149,6 +149,30 @@ class BenchmarkIntegrationTest extends IntegrationTestBase {
 	}
 
 	@Test
+	void hybridRunIsComparedWithANaiveBaselineOnCommonCases() {
+		var naive = service.run(new ExperimentService.Request(CASES, 0, null, "NAIVE"));
+		var hybrid = service.run(new ExperimentService.Request("FACT-EN-01,SEC-07,SEC-09", 0, null, "HYBRID"));
+		assertThat(hybrid.strategy()).isEqualTo("HYBRID");
+		assertThat(hybrid.status()).isEqualTo("COMPLETED");
+
+		var cmp = service.compare(naive.experimentId(), hybrid);
+		assertThat(cmp.baselineStrategy()).isEqualTo("NAIVE");
+		assertThat(cmp.commonCases()).containsExactly("FACT-EN-01", "SEC-07", "SEC-09");
+		assertThat(cmp.baseline()).anyMatch(a -> a.metric().equals("case_pass") && a.sliceType().equals("ALL")
+				&& a.sampleSize() == 3);                                          // recomputed on the common cases only
+		assertThat(cmp.current()).anyMatch(a -> a.metric().equals("case_pass") && a.sliceType().equals("ALL")
+				&& a.sampleSize() == 3);
+
+		String text = BenchmarkRunner.report(hybrid) + BenchmarkRunner.comparison(cmp, hybrid);
+		assertThat(text).contains("strategy=HYBRID")
+				.contains("COMPARISON: NAIVE#" + naive.experimentId() + " vs HYBRID#" + hybrid.experimentId())
+				.contains("common cases: 3").contains("recall_at_k");
+		String config = jdbc.queryForObject("SELECT config::text FROM experiment WHERE id = ?", String.class,
+				hybrid.experimentId());
+		assertThat(config).contains("\"rrfK\": 60").contains("\"candidates\": 20");
+	}
+
+	@Test
 	void limitAndPatternsSelectCasesInDatasetOrder() {
 		assertThat(ExperimentService.select(dataset, "SEC-0*", 0)).extracting(BenchmarkCase::id)
 				.containsExactly("SEC-01", "SEC-02", "SEC-03", "SEC-04", "SEC-05", "SEC-06", "SEC-07", "SEC-08", "SEC-09");

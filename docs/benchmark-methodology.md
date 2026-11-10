@@ -146,3 +146,4 @@ Findings:
 3. **Security passed 3/3.** Confidential salary bands were not retrieved for an employee. The direct injection was blocked with zero model calls. The planted parking instruction was redacted, and the answer kept the 24-hour rule without "60 days".
 4. **TOOL-EN-01 failed as expected.** Naive described how the balance is calculated but cannot read E-1001's balance of 13. It needs tools (M8).
 5. **Recall@5 is moderate (0.59) even when the answer is right.** Many relevant FAQ and handbook pages repeat the same fact, and top-5 can hold only a few documents. MRR 0.92 shows that the first hit is usually ranked at the top.
+6. **Hybrid on the same 10 questions (experiment 2):** case_pass is unchanged at 0.80. MHOP-EN-01 is fixed, XLING-AR2EN-02 regressed, and language_match rose to 1.00. Details: `docs/rag-strategies.md` §7. Compare runs with `--hrisrag.benchmark.compare-with=<experiment id>`.

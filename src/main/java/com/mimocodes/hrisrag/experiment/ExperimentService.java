@@ -28,6 +28,7 @@ import com.mimocodes.hrisrag.rag.core.RagProperties;
 import com.mimocodes.hrisrag.rag.guardrail.GuardrailProperties;
 import com.mimocodes.hrisrag.rag.prompt.GroundedPrompt;
 import com.mimocodes.hrisrag.rag.service.RagService;
+import com.mimocodes.hrisrag.rag.service.TraceStore;
 import com.mimocodes.hrisrag.security.AppUserStore;
 
 /**
@@ -50,10 +51,14 @@ public class ExperimentService {
 		void sleep(long millis);
 	}
 
-	public record Request(String caseFilter, int limit, Long resumeExperimentId) {
+	/** @param strategy null = {@code hrisrag.benchmark.strategy} */
+	public record Request(String caseFilter, int limit, Long resumeExperimentId, String strategy) {
+		public Request(String caseFilter, int limit, Long resumeExperimentId) {
+			this(caseFilter, limit, resumeExperimentId, null);
+		}
 	}
 
-	public record Summary(long experimentId, long runId, String status, int selected, int alreadyDone, int executed,
+	public record Summary(long experimentId, long runId, String strategy, String status, int selected, int alreadyDone, int executed,
 			String stopReason, BenchmarkDataset dataset, List<MetricAggregator.Aggregate> aggregates,
 			List<ExperimentStore.ResultRow> results) {
 	}
@@ -87,7 +92,7 @@ public class ExperimentService {
 	public Summary run(Request request) {
 		BenchmarkDataset ds = BenchmarkDataset.load(Path.of(props.datasetFile()));
 		CorpusSpec spec = CorpusSpec.load(Path.of(props.corpusSpecDir()));
-		StrategyId strategy = StrategyId.valueOf(props.strategy());
+		StrategyId strategy = StrategyId.valueOf(request.strategy() != null ? request.strategy() : props.strategy());
 		RagSettings settings = ragProps.defaultSettings();
 		long datasetId = store.registerDataset(ds);
 
@@ -147,7 +152,7 @@ public class ExperimentService {
 			String status = stopReason != null ? "PARTIAL" : "COMPLETED";
 			List<MetricAggregator.Aggregate> aggregates = recomputeAggregates(runId, ds);
 			store.finish(experimentId, status, stopReason);
-			return new Summary(experimentId, runId, status, selected.size(), done.size(), executed, stopReason, ds,
+			return new Summary(experimentId, runId, strategy.name(), status, selected.size(), done.size(), executed, stopReason, ds,
 					aggregates, store.results(runId));
 		}
 		catch (RuntimeException e) {
@@ -160,17 +165,45 @@ public class ExperimentService {
 
 	/** Aggregates are always recomputed from ALL stored results of the run (so a resume yields complete numbers). */
 	List<MetricAggregator.Aggregate> recomputeAggregates(long runId, BenchmarkDataset ds) {
-		Map<String, BenchmarkCase> byId = new LinkedHashMap<>();
-		ds.cases().forEach(c -> byId.put(c.id(), c));
-		List<MetricAggregator.Scored> scored = new ArrayList<>();
-		for (ExperimentStore.ResultRow row : store.results(runId)) {
-			BenchmarkCase c = byId.get(row.caseKey());
-			scored.add(new MetricAggregator.Scored(row.caseKey(), row.category(), row.language(), CaseScorer.scope(c),
-					row.metrics()));
-		}
-		List<MetricAggregator.Aggregate> aggregates = MetricAggregator.aggregate(scored);
+		List<MetricAggregator.Aggregate> aggregates = MetricAggregator.aggregate(scored(store.results(runId), ds));
 		store.replaceAggregates(runId, aggregates);
 		return aggregates;
+	}
+
+	private static List<MetricAggregator.Scored> scored(List<ExperimentStore.ResultRow> rows, BenchmarkDataset ds) {
+		Map<String, BenchmarkCase> byId = new LinkedHashMap<>();
+		ds.cases().forEach(c -> byId.put(c.id(), c));
+		return rows.stream().map(row -> new MetricAggregator.Scored(row.caseKey(), row.category(), row.language(),
+				CaseScorer.scope(byId.get(row.caseKey())), row.metrics())).toList();
+	}
+
+	/**
+	 * Side-by-side comparison with the first run of a baseline experiment, recomputed over the cases BOTH runs contain
+	 * (so different case sets never distort the comparison).
+	 */
+	public record Comparison(long baselineExperimentId, String baselineStrategy, List<String> commonCases,
+			List<MetricAggregator.Aggregate> baseline, List<MetricAggregator.Aggregate> current,
+			List<ExperimentStore.ResultRow> baselineRows, List<ExperimentStore.ResultRow> currentRows) {
+	}
+
+	public Comparison compare(long baselineExperimentId, Summary current) {
+		var runs = store.runs(baselineExperimentId);
+		if (runs.isEmpty()) {
+			throw new IllegalArgumentException("experiment " + baselineExperimentId + " has no runs");
+		}
+		long baselineRun = ((Number) runs.getFirst().get("id")).longValue();
+		String baselineStrategy = (String) runs.getFirst().get("strategy");
+		Set<String> currentKeys = new java.util.HashSet<>();
+		current.results().forEach(r -> currentKeys.add(r.caseKey()));
+		List<ExperimentStore.ResultRow> base = store.results(baselineRun).stream()
+				.filter(r -> currentKeys.contains(r.caseKey())).toList();
+		Set<String> common = new java.util.LinkedHashSet<>();
+		base.forEach(r -> common.add(r.caseKey()));
+		List<ExperimentStore.ResultRow> cur = current.results().stream().filter(r -> common.contains(r.caseKey()))
+				.toList();
+		return new Comparison(baselineExperimentId, baselineStrategy, List.copyOf(common),
+				MetricAggregator.aggregate(scored(base, current.dataset())),
+				MetricAggregator.aggregate(scored(cur, current.dataset())), base, cur);
 	}
 
 	/** Case ids matching any comma-separated pattern ({@code *} wildcard), in dataset order, then the limit. */
@@ -204,8 +237,7 @@ public class ExperimentService {
 	private static Map<String, Object> detail(RagResult r, Map<String, Integer> relevant) {
 		Map<String, Object> d = new LinkedHashMap<>();
 		d.put("relevantDocs", relevant);
-		d.put("retrieved", r.retrieved().stream().map(c -> Map.of("rank", c.rank(), "docKey", c.docKey(),
-				"version", c.version(), "chunkId", c.chunkId(), "score", c.score())).toList());
+		d.put("retrieved", r.retrieved().stream().map(TraceStore::chunkSummary).toList());
 		d.put("citations", r.citations());
 		d.put("passageChecks", r.passageChecks().stream().filter(p -> !p.outcome().equals("CLEAN")).toList());
 		d.put("guardrails", r.guardrails());
@@ -218,6 +250,9 @@ public class ExperimentService {
 				"referenceDate", ds.referenceDate().toString()));
 		c.put("strategy", strategy.name());
 		c.put("settings", settings);
+		if (strategy == StrategyId.HYBRID) {
+			c.put("hybrid", ragProps.hybrid());
+		}
 		c.put("promptVersion", GroundedPrompt.VERSION);
 		c.put("embeddingModel", embeddings.modelName());
 		c.put("guardrails", guardrailProps);

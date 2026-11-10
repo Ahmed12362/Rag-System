@@ -46,14 +46,33 @@ public final class RagContract {
 	public record RagSettings(int topK, int maxContextTokens, String chatModel, double temperature) {
 	}
 
-	/** A retrieved chunk exactly as stored (retrieval metrics use these, before any guardrail screening). */
+	/**
+	 * A retrieved chunk exactly as stored (retrieval metrics use these, before any guardrail screening).
+	 *
+	 * @param score       the ranking score of the retriever that produced the list (cosine similarity for vector,
+	 *                    ts_rank_cd for keyword, the RRF score for hybrid)
+	 * @param vectorRank  1-based rank in the vector candidate list, null if not found there (hybrid only)
+	 * @param keywordRank 1-based rank in the keyword candidate list, null if not found there (hybrid only)
+	 */
 	public record RetrievedChunk(long chunkId, String docKey, String version, String title, String sectionPath,
 			String language, String status, String accessLevel, String scopeDepartment, String content, double score,
-			int rank) {
+			int rank, Integer vectorRank, Integer keywordRank) {
+
+		public RetrievedChunk(long chunkId, String docKey, String version, String title, String sectionPath,
+				String language, String status, String accessLevel, String scopeDepartment, String content, double score,
+				int rank) {
+			this(chunkId, docKey, version, title, sectionPath, language, status, accessLevel, scopeDepartment, content,
+					score, rank, null, null);
+		}
 
 		public RetrievedChunk withContent(String newContent) {
 			return new RetrievedChunk(chunkId, docKey, version, title, sectionPath, language, status, accessLevel,
-					scopeDepartment, newContent, score, rank);
+					scopeDepartment, newContent, score, rank, vectorRank, keywordRank);
+		}
+
+		public RetrievedChunk ranked(double newScore, int newRank, Integer newVectorRank, Integer newKeywordRank) {
+			return new RetrievedChunk(chunkId, docKey, version, title, sectionPath, language, status, accessLevel,
+					scopeDepartment, content, newScore, newRank, newVectorRank, newKeywordRank);
 		}
 	}
 
