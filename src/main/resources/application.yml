@@ -23,7 +23,12 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  mvc:
+    problemdetails:
+      enabled: true                 # RFC 9457 error bodies for validation and other MVC errors
   ai:
+    retry:
+      max-attempts: 1               # our gateways (EmbeddingService, GenerationService) own retry and quota handling
     google:
       genai:
         api-key: ${GOOGLE_API_KEY}
@@ -45,6 +50,16 @@ hrisrag:
     seed: 42
     reference-date: 2026-11-01    # the dataset's "today"; benchmark anchors assume this date
 
+  rag:
+    top-k: 5
+    max-context-tokens: 2500
+    chat-model: gemini-3.5-flash-lite   # answering model (D5)
+    temperature: 0.0
+    generation-timeout: 60s
+    dev-user:                          # TEMPORARY server-side identity until Spring Security (M6); never read from requests
+      employee-code: E-1001
+      role: EMPLOYEE
+      department: D-ENG
   embedding:
     model: gemini-embedding-001     # same model for documents and queries (D5); changing it requires a full re-embed
     dimensions: 768

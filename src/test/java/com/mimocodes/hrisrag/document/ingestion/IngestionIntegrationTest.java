@@ -29,66 +29,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.mimocodes.hrisrag.IntegrationTestBase;
 import com.mimocodes.hrisrag.ai.EmbeddingService;
+import com.mimocodes.hrisrag.testsupport.FakeModels;
 
 /**
  * End-to-end incremental ingestion on the real Flyway schema (pgvector Testcontainer) with a deterministic fake
  * embedding model: no API calls. One ordered scenario: first run, unchanged re-run, edit, removal, corrupt file, search.
  */
-@Import(IngestionIntegrationTest.FakeEmbeddingConfig.class)
+@Import(FakeModels.Config.class)
 class IngestionIntegrationTest extends IntegrationTestBase {
-
-	/** Feature-hashing bag of words: texts sharing words get similar vectors, so similarity search is meaningful. */
-	static final class HashingEmbeddingModel implements EmbeddingModel {
-		static final AtomicInteger REQUESTS = new AtomicInteger();
-		private static final Pattern WORD = Pattern.compile("\\p{L}+");
-
-		static float[] vector(String text) {
-			float[] v = new float[768];
-			Matcher m = WORD.matcher(text.toLowerCase(Locale.ROOT));
-			while (m.find()) {
-				v[Math.floorMod(m.group().hashCode(), 768)] += 1;
-			}
-			double norm = 0;
-			for (float x : v) {
-				norm += x * x;
-			}
-			if (norm == 0) {
-				v[0] = 1;
-				return v;
-			}
-			for (int i = 0; i < v.length; i++) {
-				v[i] /= (float) Math.sqrt(norm);
-			}
-			return v;
-		}
-
-		@Override
-		public EmbeddingResponse call(EmbeddingRequest request) {
-			REQUESTS.incrementAndGet();
-			List<String> texts = request.getInstructions();
-			return new EmbeddingResponse(IntStream.range(0, texts.size())
-					.mapToObj(i -> new Embedding(vector(texts.get(i)), i)).toList());
-		}
-
-		@Override
-		public float[] embed(Document document) {
-			return vector(document.getText());
-		}
-
-		@Override
-		public int dimensions() {
-			return 768;
-		}
-	}
-
-	@TestConfiguration(proxyBeanMethods = false)
-	static class FakeEmbeddingConfig {
-		@Bean
-		@Primary
-		EmbeddingModel fakeEmbeddingModel() {
-			return new HashingEmbeddingModel();
-		}
-	}
 
 	@Autowired IngestionService ingestion;
 	@Autowired EmbeddingService embeddings;
@@ -123,12 +71,12 @@ class IngestionIntegrationTest extends IntegrationTestBase {
 		assertThat(count("SELECT count(*) FROM source_document WHERE status = 'SUPERSEDED'")).isEqualTo(1);
 
 		// 2. Re-run without changes: nothing re-embedded, zero provider requests.
-		int before = HashingEmbeddingModel.REQUESTS.get();
+		int before = FakeModels.HashingEmbeddingModel.REQUESTS.get();
 		var second = ingestion.ingest(corpus);
 		assertThat(second.unchanged()).isEqualTo(4);
 		assertThat(second.ingested()).isZero();
 		assertThat(second.embeddingRequests()).isZero();
-		assertThat(HashingEmbeddingModel.REQUESTS.get()).isEqualTo(before);
+		assertThat(FakeModels.HashingEmbeddingModel.REQUESTS.get()).isEqualTo(before);
 
 		// 3. Edit one section of one document: only that document is re-ingested, only the changed chunk is embedded.
 		Path edited = corpus.resolve("en/attendance/FAQ-ATTENDANCE-1-EN--v1.0.md");
@@ -161,7 +109,8 @@ class IngestionIntegrationTest extends IntegrationTestBase {
 				.isEqualTo("PARTIAL");
 
 		// 6. The stored data is searchable: vector top-1 and English full-text both find the annual-leave policy.
-		String query = DocumentStore.toVectorLiteral(embeddings.embedQuery("annual leave request notice calendar days"));
+		String query = com.mimocodes.hrisrag.ai.EmbeddingCache.toVectorLiteral(
+				embeddings.embedQuery("annual leave request notice calendar days"));
 		String top = jdbc.queryForObject("""
 				SELECT d.doc_key FROM document_chunk c JOIN source_document d ON d.id = c.document_id
 				WHERE d.status = 'ACTIVE' AND d.language = 'en'

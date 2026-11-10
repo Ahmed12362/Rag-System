@@ -11,6 +11,38 @@
   shows success until the backend reports a terminal status.
 - Lists are paginated (`page`, `size`) with stable sort order.
 
+## Implemented (Task 5.1)
+
+### `POST /api/v1/chat`
+Request:
+```json
+{ "question": "How early must I request annual leave?", "strategy": "NAIVE", "conversationId": "c-1" }
+```
+- `question`: required, 1–2000 characters.
+- `strategy`: optional, `NAIVE` (default), `HYBRID` or `AGENTIC`. Unavailable strategies → 400.
+- `conversationId`: optional, ≤ 64 characters.
+- There is no user field: identity is server-side.
+
+Response `200` (`RagResult`, abbreviated):
+```json
+{ "requestId": "…", "strategy": "NAIVE", "status": "ANSWERED",
+  "answer": "Submit the request at least 14 calendar days before … [S1]",
+  "citations": [{ "sourceId": "S1", "chunkId": 42, "docKey": "POL-ANNUAL-LEAVE-EN", "version": "2.0",
+                  "sectionPath": "Annual Leave Policy > 3. Policy" }],
+  "retrieved": [{ "rank": 1, "chunkId": 42, "docKey": "POL-ANNUAL-LEAVE-EN", "score": 0.81, "content": "…" }],
+  "modelCalls": [{ "purpose": "EMBED_QUERY", "cached": false }, { "purpose": "GENERATE", "promptTokens": 950, … }],
+  "guardrails": [{ "layer": "OUTPUT", "rule": "CITATIONS", "outcome": "PASS" }],
+  "timings": { "totalMs": 2100, "embeddingMs": 300, "retrievalMs": 15, "generationMs": 1750 },
+  "settings": { "topK": 5, "maxContextTokens": 2500, "chatModel": "gemini-3.5-flash-lite", "temperature": 0.0 },
+  "promptVersion": "grounded-v1" }
+```
+`status` is one of `ANSWERED`, `ABSTAINED` (no evidence), `BLOCKED` (input rejected) and `ERROR` (safe message; details in logs).
+
+Errors: `400 application/problem+json` (RFC 9457) for validation failures and unavailable strategies.
+
+### `GET /api/v1/strategies`
+`[{ "id": "NAIVE", "available": true, "defaultTopK": 5, "chatModel": "gemini-3.5-flash-lite" }, { "id": "HYBRID", "available": false, … }]`
+
 ## Endpoint groups
 
 | Group | Endpoints (draft) | Purpose | Milestone |

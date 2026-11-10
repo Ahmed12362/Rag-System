@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.mimocodes.hrisrag.ai.EmbeddingCache;
 import com.mimocodes.hrisrag.ai.EmbeddingService;
+import com.mimocodes.hrisrag.config.EmbeddingOptionsFactory.Purpose;
 import com.mimocodes.hrisrag.ai.EmbeddingService.EmbeddingQuotaExceededException;
 import com.mimocodes.hrisrag.document.ingestion.CorpusLoader.LoadedDocument;
 import com.mimocodes.hrisrag.document.ingestion.SectionChunker.Chunk;
@@ -50,15 +52,17 @@ public class IngestionService {
 	private final SectionChunker chunker;
 	private final EmbeddingService embeddings;
 	private final DocumentStore store;
+	private final EmbeddingCache cache;
 	private final TransactionTemplate tx;
 	private final ChunkingProperties chunking;
 
 	public IngestionService(CorpusLoader loader, SectionChunker chunker, EmbeddingService embeddings, DocumentStore store,
-			PlatformTransactionManager transactionManager, ChunkingProperties chunking) {
+			EmbeddingCache cache, PlatformTransactionManager transactionManager, ChunkingProperties chunking) {
 		this.loader = loader;
 		this.chunker = chunker;
 		this.embeddings = embeddings;
 		this.store = store;
+		this.cache = cache;
 		this.tx = new TransactionTemplate(transactionManager);
 		this.chunking = chunking;
 	}
@@ -116,7 +120,8 @@ public class IngestionService {
 				}
 				stage = "EMBED";
 				Set<String> hashes = chunks.stream().map(Chunk::contentHash).collect(Collectors.toSet());
-				Map<String, float[]> vectorsByHash = new LinkedHashMap<>(store.cachedEmbeddings(embeddings.modelName(), hashes));
+				Map<String, float[]> vectorsByHash = new LinkedHashMap<>(
+						cache.get(embeddings.modelName(), Purpose.DOCUMENT, hashes));
 				int hits = vectorsByHash.size();
 				List<Chunk> missing = chunks.stream().filter(c -> !vectorsByHash.containsKey(c.contentHash()))
 						.collect(Collectors.toMap(Chunk::contentHash, c -> c, (a, b) -> a, LinkedHashMap::new))
@@ -132,7 +137,7 @@ public class IngestionService {
 				stage = "STORE";
 				List<float[]> orderedVectors = chunks.stream().map(c -> vectorsByHash.get(c.contentHash())).toList();
 				int written = tx.execute(t -> {
-					store.cacheEmbeddings(embeddings.modelName(), fresh);
+					cache.put(embeddings.modelName(), Purpose.DOCUMENT, fresh);
 					return store.replace(doc, chunks, orderedVectors, embeddings.modelName());
 				});
 				chunksWritten += written;
