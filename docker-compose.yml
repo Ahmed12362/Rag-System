@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg18-bookworm
+    container_name: hris-rag-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-hris_rag}
+      POSTGRES_USER: ${DB_USER:-hris_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+    ports:
+      - "${DB_PORT:-5434}:5432"
+    volumes:
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/<major>/, so mount the parent directory
+      - hris_rag_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hris_rag_pgdata:

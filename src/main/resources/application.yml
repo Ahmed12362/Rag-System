@@ -1,0 +1,45 @@
+# Non-secret defaults only. Secrets and local settings come from the git-ignored .env file
+# (imported below) or from real environment variables, which take precedence.
+spring:
+  application:
+    name: hris-rag
+  config:
+    import: optional:file:.env[.properties]
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:hris_rag}
+    username: ${DB_USER:hris_user}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema (decision D2)
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY}
+        chat:
+          options:
+            model: gemini-3.5-flash-lite      # decision D5
+            temperature: 0.0
+        embedding:
+          api-key: ${GOOGLE_API_KEY}
+          text:
+            options:
+              model: gemini-embedding-001     # decision D5
+              dimensions: 768
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always        # local development only; restrict when security is added (M6)
