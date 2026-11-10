@@ -25,11 +25,16 @@ public class ContextBuilder {
 	}
 
 	public Context build(List<RetrievedChunk> chunks, int maxTokens) {
+		return build(chunks, maxTokens, 1);
+	}
+
+	/** Numbers sources from {@code S<firstIndex>}, so several searches in one conversation get unique ids. */
+	public Context build(List<RetrievedChunk> chunks, int maxTokens, int firstIndex) {
 		Map<String, RetrievedChunk> sources = new LinkedHashMap<>();
 		List<String> parts = new ArrayList<>();
 		int used = 0;
 		for (RetrievedChunk c : chunks) {
-			String id = "S" + (sources.size() + 1);
+			String id = "S" + (firstIndex + sources.size());
 			String body = c.content().replace("<", "‹").replace(">", "›");
 			String part = "<source id=\"" + id + "\" document=\"" + c.docKey() + "\" version=\"" + c.version()
 					+ "\" section=\"" + c.sectionPath().replace("\"", "'") + "\">\n" + body + "\n</source>";

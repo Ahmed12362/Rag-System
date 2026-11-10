@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import com.mimocodes.hrisrag.rag.prompt.AgentPrompt;
 import com.mimocodes.hrisrag.rag.prompt.GroundedPrompt;
 
 /**
@@ -35,7 +36,7 @@ public class OutputGuard {
 	private final List<String> secretValues;
 
 	public OutputGuard(Environment env) {
-		this.promptFragments = GroundedPrompt.SYSTEM.lines()
+		this.promptFragments = (GroundedPrompt.SYSTEM + "\n" + AgentPrompt.RULES).lines()
 				.map(l -> TextNormalizer.normalize(l.replaceFirst("^\\s*-\\s*", "")))
 				.filter(l -> l.length() >= FRAGMENT_CHARS)
 				.map(l -> l.substring(0, FRAGMENT_CHARS))

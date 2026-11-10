@@ -1,5 +1,7 @@
 # Non-secret defaults only. Secrets and local settings come from the git-ignored .env file
 # (imported below) or from real environment variables, which take precedence.
+server:
+  port: 8081
 spring:
   application:
     name: hris-rag
@@ -59,6 +61,14 @@ hrisrag:
     hybrid:
       candidates: 20                # vector top-20 and keyword top-20 are fused ...
       rrf-k: 60                     # ... with Reciprocal Rank Fusion, 1/(k + rank); then the top-k above
+    agent:                          # Agentic loop limits per question (D7)
+      max-iterations: 4             # model rounds
+      max-tool-calls: 6
+      deadline: 60s
+  tools:
+    reference-date: 2026-11-01      # the synthetic dataset's "today" (D20): "this year", "upcoming", default month
+    zone: Africa/Cairo
+    max-meetings: 5
   guardrails:
     input-injection: BLOCK          # BLOCK | FLAG | OFF  (direct prompt injection in the question)
     context-screening: REDACT       # REDACT | FLAG | OFF (instruction-like sentences inside retrieved passages)

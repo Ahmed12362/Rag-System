@@ -160,6 +160,20 @@
   for both; MHOP-EN-01 fixed, XLING-AR2EN-02 regressed (RRF credits weak double-matches over a top single match when keyword
   search is blind cross-lingually); language_match 0.71 → 1.00; MRR 0.92 → 0.68 (`docs/rag-strategies.md` §7).
 
+### Task 8.1: Agentic RAG with authorized HRIS tools (Milestone 8), 2026-11-10
+- `data.query.HrisQueryService`: read-only records (balance, request, upcoming meetings, attendance summary, employee
+  reference). No compensation or disciplinary access.
+- `tools`: `HrisTools` (4 allowlisted tools, strict argument validation, company-time output), `ToolAuthorizer`
+  (SELF / DIRECT_REPORT / HR_ADMIN, otherwise NOT_OWN_DATA; unknown targets look like foreign ones), `ToolsProperties`
+  (reference date 2026-11-01).
+- `AgenticRagStrategy`: manual bounded loop (4 rounds, 6 tool calls, 60 s); `search_policies` via the extracted
+  `HybridRetriever` plus the shared screening; a denial with no data gives a fixed refusal (BLOCKED); prompt `agentic-v1`
+  (its rules are also in the output leak check). `GenerationService.converse` uses declaration-only tool callbacks.
+- Spike (risk R11): Spring AI 2.0.1's Gemini model does not execute tools, and multi-turn calls with thought signatures work.
+- `RagResult.toolCalls` (API, trace without payloads, `ask.ps1`). `ask.ps1` now defaults to port 8081.
+- Tests 195/195 (+12 agentic). Real check, 5 questions (12 chat calls, 0 embeddings): all as expected. Two defects found and
+  fixed: meeting times in UTC, and false "uncited" flags on tool-only answers.
+
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
 - D2: Flyway owns the schema (`ddl-auto=validate`, no Spring AI auto schema).
@@ -220,6 +234,12 @@
   later, its own loop (Agentic). Benchmark differences are then attributable to retrieval.
 - D41: Hybrid = vector + PostgreSQL full-text search fused by unweighted RRF (k=60, 20 + 20 candidates) as the textbook
   baseline. Weighting and depth are tuned only on the full benchmark, never on the 10-case smoke set.
+- D42: Tool authorization is decided in code by `ToolAuthorizer` from the login identity: SELF, a manager's
+  DIRECT_REPORT, or HR_ADMIN. The model's arguments are only the requested target; a leave request is authorized against its owner.
+- D43: The Agentic answer after a denied call with no data returned is a fixed refusal (BLOCKED), not model text. The
+  outcome must not depend on how the model words it.
+- D44: Tool results use company local time and the dataset reference date; payloads are never persisted, only validated
+  arguments, decisions and sizes.
 - D18: The HRIS `data` module is internally one module. Sub-capabilities may reference each other's entities (e.g. `LeaveRequest → Employee`);
   other modules must go through services (ArchUnit rule 1).
 
@@ -240,7 +260,8 @@
   85 embeddings and about 95 chat calls.
 
 ## Test status
-- `mvnw clean verify` (Task 7.1 final): **183 tests, 183 passed, 0 failed** (adds HybridUnitTest 2, HybridIntegrationTest 6,
+- `mvnw clean verify` (Task 8.1 final): **195 tests, 195 passed, 0 failed** (adds AgenticIntegrationTest 12).
+- Previously `mvnw clean verify` (Task 7.1 final): **183 tests, 183 passed, 0 failed** (adds HybridUnitTest 2, HybridIntegrationTest 6,
   BenchmarkIntegrationTest +1 comparison).
 - Previously `mvnw clean verify` (Task 6.2 final): **174 tests, 174 passed, 0 failed** (adds EvaluationUnitTest 4,
   BenchmarkIntegrationTest 5).
@@ -262,6 +283,7 @@
 ## Next proposed task
 - Options, each needing approval:
   - (a) Task 7.2: fusion tuning (weighted RRF / candidate depth) measured on a larger benchmark subset;
-  - (b) Milestone 8: Agentic RAG with authorized HRIS tools (fixes the TOOLS_REQUIRED cases);
+  - (b) Task 8.2: benchmark tool metrics (tool selection, arguments, authorization, forbidden tools) and a
+    Naive / Hybrid / Agentic comparison on the same 10 cases;
   - (c) a `grounded-v2` prompt fix for language following.
 - Regenerate the AI Studio key after submission (it was shared in chat).

@@ -18,7 +18,16 @@ public record RagProperties(
 		@DefaultValue("0.0") double temperature,
 		@DefaultValue("2000") int maxQuestionChars,
 		@DefaultValue("60s") Duration generationTimeout,
-		@DefaultValue Hybrid hybrid) {
+		@DefaultValue Hybrid hybrid,
+		@DefaultValue Agent agent) {
+
+	/**
+	 * Agentic loop limits (decision D7): model rounds, total tool calls and a wall-clock deadline per question. The
+	 * deadline bounds the whole loop; each model call also keeps {@code generationTimeout}.
+	 */
+	public record Agent(@DefaultValue("4") int maxIterations, @DefaultValue("6") int maxToolCalls,
+			@DefaultValue("60s") Duration deadline) {
+	}
 
 	/**
 	 * Hybrid retrieval: candidates per retriever (vector and keyword) before fusion, and the RRF constant k

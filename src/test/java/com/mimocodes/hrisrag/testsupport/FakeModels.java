@@ -81,20 +81,32 @@ public final class FakeModels {
 		}
 	}
 
-	/** Chat model whose reply is set per test; every prompt is recorded. */
+	/**
+	 * Chat model whose reply is set per test; every prompt is recorded. When {@link #TURNS} is set it takes precedence
+	 * and may return an assistant message with tool calls (agent tests).
+	 */
 	public static final class ScriptedChatModel implements ChatModel {
 		public static final AtomicReference<Function<Prompt, String>> RESPONDER =
 				new AtomicReference<>(p -> "Default answer [S1].");
+		public static final AtomicReference<Function<Prompt, AssistantMessage>> TURNS = new AtomicReference<>();
 		public static final List<Prompt> PROMPTS = Collections.synchronizedList(new ArrayList<>());
 
 		@Override
 		public ChatResponse call(Prompt prompt) {
 			PROMPTS.add(prompt);
-			String text = RESPONDER.get().apply(prompt);
+			Function<Prompt, AssistantMessage> turns = TURNS.get();
+			AssistantMessage message = turns != null ? turns.apply(prompt)
+					: new AssistantMessage(RESPONDER.get().apply(prompt));
 			return new ChatResponse(
-					List.of(new Generation(new AssistantMessage(text),
-							ChatGenerationMetadata.builder().finishReason("STOP").build())),
+					List.of(new Generation(message, ChatGenerationMetadata.builder()
+							.finishReason(message.hasToolCalls() ? "TOOL_CALLS" : "STOP").build())),
 					ChatResponseMetadata.builder().usage(new DefaultUsage(120, 30, 150)).build());
+		}
+
+		/** An assistant turn that proposes one tool call. */
+		public static AssistantMessage toolCall(String id, String name, String argumentsJson) {
+			return AssistantMessage.builder().content("")
+					.toolCalls(List.of(new AssistantMessage.ToolCall(id, "function", name, argumentsJson))).build();
 		}
 	}
 

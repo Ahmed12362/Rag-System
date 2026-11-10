@@ -31,7 +31,9 @@ Request:
 { "question": "How early must I request annual leave?", "strategy": "NAIVE", "conversationId": "c-1" }
 ```
 - `question`: required, 1–2000 characters.
-- `strategy`: optional, `NAIVE` (default), `HYBRID` (Task 7.1) or `AGENTIC`. Unavailable strategies → 400. For HYBRID,
+- `strategy`: optional, `NAIVE` (default), `HYBRID` (Task 7.1) or `AGENTIC` (Task 8.1). AGENTIC adds `toolCalls[]`
+  (`round`, `name`, validated `arguments`, `outcome` OK/DENIED/INVALID/NOT_FOUND/LIMIT, `reason`, `resultChars`,
+  `latencyMs`). The tool result data is never returned or stored. For HYBRID,
   `retrieved[].score` is the fused RRF score, and `vectorRank` / `keywordRank` show the chunk's rank in each list (null = not in
   that list).
 - `conversationId`: optional, ≤ 64 characters.

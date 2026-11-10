@@ -19,7 +19,7 @@ param(
     [Parameter(Mandatory = $true, Position = 0)] [string] $Question,
     [ValidateSet("employee", "qa", "manager", "hr", "finance", "contractor")] [string] $User = "employee",
     [string] $Strategy = "NAIVE",
-    [string] $BaseUrl = "http://localhost:8080",
+    [string] $BaseUrl = "http://localhost:8081",
     [switch] $Raw
 )
 
@@ -77,12 +77,20 @@ if ($r.retrieved.Count -gt 0) {
         Write-Host ("  #{0} {1}{2}  {3} v{4} [{5}] - {6}{7}" -f $c.rank, $score, $src, $c.docKey, $c.version, $c.accessLevel, $c.sectionPath, $mark)
     }
 }
+if ($r.toolCalls.Count -gt 0) {
+    Write-Host "Tool calls:" -ForegroundColor Cyan
+    foreach ($t in $r.toolCalls) {
+        $args = ($t.arguments.PSObject.Properties | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ", "
+        $tc = switch ($t.outcome) { "OK" { "Green" } "DENIED" { "Red" } default { "Yellow" } }
+        Write-Host ("  round {0}: {1}({2}) -> {3} [{4}] {5} ms" -f $t.round, $t.name, $args, $t.outcome, $t.reason, $t.latencyMs) -ForegroundColor $tc
+    }
+}
 $gen = $r.modelCalls | Where-Object { $_.purpose -eq "GENERATE" }
 Write-Host ("Timings: total={0} ms (embedding={1}, retrieval={2}, generation={3})" -f `
     $r.timings.totalMs, $r.timings.embeddingMs, $r.timings.retrievalMs, $r.timings.generationMs) -ForegroundColor DarkGray
 Write-Host ("Calls: embeddings={0} (cache hits={1}), chat={2}" -f `
     $r.callCounts.embeddingCalls, $r.callCounts.embeddingCacheHits, $r.callCounts.chatCalls) -ForegroundColor DarkGray
-if ($gen) { Write-Host ("Tokens: prompt={0} completion={1} thinking={2} finish={3}" -f `
-    $gen.promptTokens, $gen.completionTokens, $gen.thinkingTokens, $gen.finishReason) -ForegroundColor DarkGray }
+if ($r.callCounts) { Write-Host ("Tokens: prompt={0} completion={1} thinking={2}" -f `
+    $r.callCounts.promptTokens, $r.callCounts.completionTokens, $r.callCounts.thinkingTokens) -ForegroundColor DarkGray }
 $flags = $r.guardrails | Where-Object { $_.outcome -notin @("PASS", "APPLIED") }
 if ($flags) { Write-Host "Guardrails:" -ForegroundColor Yellow; $flags | ForEach-Object { Write-Host ("  {0}/{1}: {2} {3}" -f $_.layer, $_.rule, $_.outcome, $_.detail) } }

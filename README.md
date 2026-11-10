@@ -143,6 +143,11 @@ The API requires a login (HTTP Basic). `ask.ps1` logs in as `-User` (default `em
 | `finance` | E-1004 | EMPLOYEE | Finance | PUBLIC, INTERNAL |
 | `contractor` | CT-0001 | EMPLOYEE | Operations | PUBLIC only |
 
+Add `-Strategy AGENTIC` to let the assistant use HR-record tools. For example, `.\scripts\ask.ps1 "How many annual leave days do I
+have left?" -Strategy AGENTIC` gives 13 for `employee`. Each tool call is shown with its authorization decision. You can see
+only your own records: your direct reports' too if you're `manager`, and everyone's if you're `hr`. The script talks to
+port 8081 by default; use `-BaseUrl` to change it.
+
 Add `-Strategy HYBRID` for keyword + vector retrieval. Each retrieved chunk then shows its vector and keyword rank, e.g. `(v#1, k -)`.
 
 ```powershell

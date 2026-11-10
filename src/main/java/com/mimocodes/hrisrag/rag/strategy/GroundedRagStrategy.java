@@ -25,6 +25,7 @@ import com.mimocodes.hrisrag.rag.core.RagContract.RagSettings;
 import com.mimocodes.hrisrag.rag.core.RagContract.RagStrategy;
 import com.mimocodes.hrisrag.rag.core.RagContract.RetrievedChunk;
 import com.mimocodes.hrisrag.rag.core.RagContract.Timings;
+import com.mimocodes.hrisrag.rag.core.RagContract.ToolCallTrace;
 import com.mimocodes.hrisrag.rag.core.RagProperties;
 import com.mimocodes.hrisrag.rag.guardrail.AccessPolicy;
 import com.mimocodes.hrisrag.rag.guardrail.GuardrailProperties;
@@ -83,10 +84,13 @@ public abstract class GroundedRagStrategy implements RagStrategy {
 	}
 
 	/**
-	 * The strategy's retrieval step. Must apply {@link com.mimocodes.hrisrag.rag.retrieval.AccessSql} in every query,
-	 * record its provider calls in {@link Run#calls} and set {@link Run#embeddingMs} / {@link Run#retrievalMs}.
+	 * The strategy's retrieval step (single-shot strategies). Must apply
+	 * {@link com.mimocodes.hrisrag.rag.retrieval.AccessSql} in every query, record its provider calls in
+	 * {@link Run#calls} and set {@link Run#embeddingMs} / {@link Run#retrievalMs}.
 	 */
-	protected abstract List<RetrievedChunk> retrieve(Run run, String question, RagQuery query, RagSettings settings);
+	protected List<RetrievedChunk> retrieve(Run run, String question, RagQuery query, RagSettings settings) {
+		throw new UnsupportedOperationException(id() + " does not use single-shot retrieval");
+	}
 
 	/** Mutable state of one request; turned into an immutable {@link RagResult} at the end. */
 	protected final class Run {
@@ -98,6 +102,7 @@ public abstract class GroundedRagStrategy implements RagStrategy {
 		final List<GuardrailDecision> guardrails = new ArrayList<>();
 		List<RetrievedChunk> retrieved = List.of();
 		final List<PassageCheck> passageChecks = new ArrayList<>();
+		final List<ToolCallTrace> toolCalls = new ArrayList<>();
 		String context = "";
 		long embeddingMs, retrievalMs, generationMs;
 
@@ -112,8 +117,8 @@ public abstract class GroundedRagStrategy implements RagStrategy {
 
 		RagResult finish(AnswerStatus status, String answer, List<Citation> cites) {
 			return new RagResult(requestId, id(), status, answer, cites, retrieved, List.copyOf(passageChecks), context,
-					List.copyOf(calls), CallCounts.of(calls), List.copyOf(guardrails),
-					new Timings(ms(t0), embeddingMs, retrievalMs, generationMs), settings, GroundedPrompt.VERSION);
+					List.copyOf(calls), CallCounts.of(calls), List.copyOf(toolCalls), List.copyOf(guardrails),
+					new Timings(ms(t0), embeddingMs, retrievalMs, generationMs), settings, promptVersion());
 		}
 
 		RagResult abstain() {
@@ -152,50 +157,7 @@ public abstract class GroundedRagStrategy implements RagStrategy {
 		}
 
 		try {
-			// 2. RETRIEVAL (access filters inside the SQL)
-			run.retrieved = retrieve(run, question, query, settings);
-			run.guard("RETRIEVAL", "ACTIVE_ACCESS_SCOPE_FILTER", "APPLIED", "status=ACTIVE, access<="
-					+ query.user().maxAccessLevel() + ", department=" + query.user().department());
-
-			// 3. CONTEXT: access re-check, then indirect-injection screening, BEFORE anything is sent to the model
-			List<RetrievedChunk> allowed = screen(run, query);
-			if (allowed.isEmpty()) {
-				run.guard("GENERATION", "NO_EVIDENCE", "ABSTAIN",
-						run.retrieved.isEmpty() ? "no retrievable chunks" : "no chunk passed the context guardrails");
-				return run.abstain();
-			}
-			ContextBuilder.Context context = contextBuilder.build(allowed, settings.maxContextTokens());
-			run.context = context.text();
-
-			// 4. GENERATION
-			long t = System.nanoTime();
-			GenerationService.Generation g = generation.generate(GroundedPrompt.SYSTEM,
-					GroundedPrompt.user(question, context.text()), settings.chatModel(), settings.temperature(),
-					props.generationTimeout());
-			run.generationMs = ms(t);
-			run.calls.add(new ModelCall("GENERATE", g.model(), g.latencyMs(), g.promptTokens(), g.completionTokens(),
-					g.thinkingTokens(), g.finishReason(), false));
-
-			// 5. OUTPUT
-			if (g.text().contains(GroundedPrompt.INSUFFICIENT)) {
-				run.guard("GENERATION", "INSUFFICIENT_CONTEXT", "ABSTAIN", "model reported insufficient evidence");
-				return run.abstain();
-			}
-			CitationValidator.Result cited = citations.validate(g.text(), context.sources());
-			run.guard("OUTPUT", "CITATIONS", cited.invalidSourceIds().isEmpty() && !cited.uncited() ? "PASS" : "FLAG",
-					cited.uncited() ? "answer has no valid citation"
-							: cited.invalidSourceIds().isEmpty() ? null : "removed invalid " + cited.invalidSourceIds());
-			if (guardrailProps.outputCheck()) {
-				Optional<String> leak = outputGuard.check(cited.answer());
-				if (leak.isPresent()) {
-					// The leaked text is neither returned nor stored (the trace keeps the rule id only).
-					log.warn("request {} answer blocked by output guard: {}", run.requestId, leak.get());
-					run.guard("OUTPUT", leak.get(), "BLOCK", "answer withheld");
-					return run.block();
-				}
-				run.guard("OUTPUT", "LEAK_CHECK", "PASS", null);
-			}
-			return run.finish(AnswerStatus.ANSWERED, cited.answer(), cited.citations());
+			return answer(run, question, query, settings);
 		}
 		catch (RuntimeException e) {
 			// Full provider/infrastructure details go to the server log only. The response (and trace) get a fixed,
@@ -212,12 +174,79 @@ public abstract class GroundedRagStrategy implements RagStrategy {
 		}
 	}
 
+	/** Prompt version recorded in results (the Agentic strategy uses its own prompt). */
+	protected String promptVersion() {
+		return GroundedPrompt.VERSION;
+	}
+
+	/** Steps 2–5 for single-shot strategies: retrieve, screen, generate once, check the answer. */
+	protected RagResult answer(Run run, String question, RagQuery query, RagSettings settings) {
+		// 2. RETRIEVAL (access filters inside the SQL)
+		run.retrieved = retrieve(run, question, query, settings);
+		run.guard("RETRIEVAL", "ACTIVE_ACCESS_SCOPE_FILTER", "APPLIED", "status=ACTIVE, access<="
+				+ query.user().maxAccessLevel() + ", department=" + query.user().department());
+
+		// 3. CONTEXT: access re-check, then indirect-injection screening, BEFORE anything is sent to the model
+		List<RetrievedChunk> allowed = screen(run, query, run.retrieved);
+		if (allowed.isEmpty()) {
+			run.guard("GENERATION", "NO_EVIDENCE", "ABSTAIN",
+					run.retrieved.isEmpty() ? "no retrievable chunks" : "no chunk passed the context guardrails");
+			return run.abstain();
+		}
+		ContextBuilder.Context context = contextBuilder.build(allowed, settings.maxContextTokens());
+		run.context = context.text();
+
+		// 4. GENERATION
+		long t = System.nanoTime();
+		GenerationService.Generation g = generation.generate(GroundedPrompt.SYSTEM,
+				GroundedPrompt.user(question, context.text()), settings.chatModel(), settings.temperature(),
+				props.generationTimeout());
+		run.generationMs = ms(t);
+		run.calls.add(new ModelCall("GENERATE", g.model(), g.latencyMs(), g.promptTokens(), g.completionTokens(),
+				g.thinkingTokens(), g.finishReason(), false));
+
+		// 5. OUTPUT
+		return checkAnswer(run, g.text(), context.sources());
+	}
+
+	/**
+	 * Step 5, shared by every strategy: abstention marker, citation validation against the sources actually sent, then
+	 * the system-prompt / secret leak check.
+	 */
+	protected RagResult checkAnswer(Run run, String text, java.util.Map<String, RetrievedChunk> sources) {
+		if (text.contains(GroundedPrompt.INSUFFICIENT)) {
+			run.guard("GENERATION", "INSUFFICIENT_CONTEXT", "ABSTAIN", "model reported insufficient evidence");
+			return run.abstain();
+		}
+		CitationValidator.Result cited = citations.validate(text, sources);
+		if (sources.isEmpty() && cited.invalidSourceIds().isEmpty()) {
+			// No policy source was sent (e.g. an Agentic answer from HR record tools only): nothing to cite.
+			run.guard("OUTPUT", "CITATIONS", "NOT_APPLICABLE", "no policy sources were used");
+		}
+		else {
+			run.guard("OUTPUT", "CITATIONS", cited.invalidSourceIds().isEmpty() && !cited.uncited() ? "PASS" : "FLAG",
+					cited.uncited() ? "answer has no valid citation"
+							: cited.invalidSourceIds().isEmpty() ? null : "removed invalid " + cited.invalidSourceIds());
+		}
+		if (guardrailProps.outputCheck()) {
+			Optional<String> leak = outputGuard.check(cited.answer());
+			if (leak.isPresent()) {
+				// The leaked text is neither returned nor stored (the trace keeps the rule id only).
+				log.warn("request {} answer blocked by output guard: {}", run.requestId, leak.get());
+				run.guard("OUTPUT", leak.get(), "BLOCK", "answer withheld");
+				return run.block();
+			}
+			run.guard("OUTPUT", "LEAK_CHECK", "PASS", null);
+		}
+		return run.finish(AnswerStatus.ANSWERED, cited.answer(), cited.citations());
+	}
+
 	/** Access re-check and injection screening per chunk; returns the chunks (possibly redacted) that may be sent. */
-	private List<RetrievedChunk> screen(Run run, RagQuery query) {
+	protected List<RetrievedChunk> screen(Run run, RagQuery query, List<RetrievedChunk> chunks) {
 		List<RetrievedChunk> allowed = new ArrayList<>();
 		int denied = 0, flagged = 0;
 		ScreeningMode mode = guardrailProps.contextScreening();
-		for (RetrievedChunk c : run.retrieved) {
+		for (RetrievedChunk c : chunks) {
 			Optional<String> denial = accessPolicy.denialReason(query.user(), c);
 			if (denial.isPresent()) {
 				// Should never happen (the SQL filters first). Logged loudly because it means a retriever bug.

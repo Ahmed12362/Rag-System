@@ -1,6 +1,10 @@
 package com.mimocodes.hrisrag.config;
 
+import java.util.List;
+
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingOptions;
 import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingOptions.TaskType;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +16,17 @@ public class ModelProviderConfiguration {
 
 	@Bean
 	ChatOptionsFactory chatOptionsFactory() {
-		return (model, temperature) -> GoogleGenAiChatOptions.builder().model(model).temperature(temperature).build();
+		return new ChatOptionsFactory() {
+			@Override
+			public ChatOptions create(String model, double temperature) {
+				return GoogleGenAiChatOptions.builder().model(model).temperature(temperature).build();
+			}
+
+			@Override
+			public ChatOptions createWithTools(String model, double temperature, List<ToolCallback> tools) {
+				return GoogleGenAiChatOptions.builder().model(model).temperature(temperature).toolCallbacks(tools).build();
+			}
+		};
 	}
 
 	/** Gemini embeddings distinguish document and query vectors (asymmetric retrieval task types). */

@@ -4,6 +4,7 @@
 > - **Strategy A (Naive)** is implemented, tested and verified with real Gemini on the full corpus (Task 5.1, see §5).
 > - **Guardrails and login** are added and verified (Task 6.1, see §2 and §6).
 > - **Strategy B (Hybrid)** is implemented and compared with Naive (Task 7.1, see §7).
+> - **Strategy C (Agentic)** has authorized HRIS tools and a bounded manual loop (Task 8.1, see §8).
 > Strategies B (Hybrid, M7) and C (Agentic, M8) implement the same contract.
 
 ## 1. Shared contract (`rag.core.RagContract`)
@@ -182,3 +183,45 @@ Candidate fixes, to be measured on the full benchmark and not tuned on these 10:
 1. **Weighted RRF:** keyword weight below 1.
 2. **Language-aware fusion:** down-weight the keyword list when the question's script has few matches in the corpus language mix.
 3. **Shallower candidate lists:** e.g. 10, so that deep, weak double-matches stop outranking top single matches.
+
+## 8. Strategy C: Agentic RAG (`AgenticRagStrategy`, Task 8.1)
+
+```text
+question ─► (same INPUT guardrails: blocked = 0 calls)
+loop (≤ 4 model rounds, ≤ 6 tool calls, 60 s deadline):
+   Gemini proposes tool calls ─► OUR executor: validate ─► authorize (login identity) ─► run ─► trace ─► results back
+final text ─► (same OUTPUT checks: abstention, citations, leak check); denied & no data ─► fixed refusal (BLOCKED)
+```
+
+| Tool | Arguments (validated) | Authorization |
+|---|---|---|
+| `search_policies` | `query` (screened like a user question) | Same retrieval as Hybrid (`HybridRetriever`) with the SQL access filter, the `AccessPolicy` re-check and passage redaction. Results come back as numbered `[S#]` sources |
+| `get_leave_balance` | `employee` (default: the caller), `leave_type` ∈ ANNUAL/SICK/CASUAL/UNPAID, `year` 2000–2100 | `ToolAuthorizer`: SELF, DIRECT_REPORT (manager), HR_ADMIN, otherwise NOT_OWN_DATA |
+| `get_leave_request_status` | `request_code` `LR-####` | Authorized against the request's **owner**. An unknown code gets the same answer as someone else's |
+| `get_upcoming_meetings` | `employee` | As above. Times are given in company time (Africa/Cairo) |
+| `get_attendance_summary` | `employee`, `month` `YYYY-MM` (not in the future) | As above |
+
+Design points:
+- **Manual loop (D7), verified on Spring AI 2.0.1.** `GoogleGenAiChatModel` only turns the tool callbacks into function declarations and never runs them. Our callbacks throw if anything tries to execute them.
+- **Gemini thought signatures.** Each assistant turn is sent back unchanged, so its provider properties (thought signatures) stay with it.
+- **No path to restricted data.** There is no salary, disciplinary or free-form query tool. `HrisQueryService` (in the `data` module) returns plain records only.
+- **Strict argument checks.** Unknown argument names, bad formats and out-of-range values are rejected. For a rejected call, only the argument names are traced.
+- **Fixed "today".** "Today" is `hrisrag.tools.reference-date` (2026-11-01), the dataset's reference date (D20).
+- **What is traced.** Each tool call records its round, name, validated arguments, outcome, reason, result size and latency. Result payloads are never stored. Each model round counts as one chat call.
+
+### Real check (Gemini, `gemini-3.5-flash-lite`, 2026-11-10)
+The check used 0 embeddings and 12 chat calls in total.
+
+| User | Question | Tool call (by our executor) | Result |
+|---|---|---|---|
+| employee | How many annual leave days do I have left this year? | `get_leave_balance(E-1001, ANNUAL, 2026)` → OK, SELF | **13 days** (21 − 6 used − 2 pending) |
+| employee | What is the status of my leave request LR-1005? | `get_leave_request_status(LR-1005)` → OK, SELF | **PENDING**, 2026-12-01 to 12-02 |
+| employee | When is my next meeting? | `get_upcoming_meetings(E-1001)` → OK, SELF | **Sprint planning (M-1000), 3 Nov 10:00–11:00**, Room Nile |
+| employee | How many annual leave days does my colleague Laila Hassan (E-1002) have left? | `get_leave_balance(E-1002…)` → **DENIED**, NOT_OWN_DATA | **BLOCKED**, fixed refusal, no data |
+| manager | How many annual leave days does Omar Samir (E-1001) have left this year? | `get_leave_balance(E-1001…)` → OK, DIRECT_REPORT | **13 days** |
+
+Answers took 7–26 s, all of it Gemini time across two rounds; each tool call itself took 20–250 ms.
+
+Defects found by the real run, and fixed (with regression tests):
+1. **Meeting time in UTC.** The tool returned UTC instants, so the answer said "08:00 UTC". Tools now return company local time (`2026-11-03T10:00`, `time_zone`).
+2. **False citation flag.** Answers built only from HR-record tools were flagged as uncited. The citation check is now NOT_APPLICABLE when no policy source was used.

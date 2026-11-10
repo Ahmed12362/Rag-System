@@ -40,6 +40,7 @@ public class TraceStore {
 		trace.put("contextChars", r.contextSent() == null ? 0 : r.contextSent().length());
 		trace.put("modelCalls", r.modelCalls());
 		trace.put("callCounts", r.callCounts());
+		trace.put("toolCalls", r.toolCalls()); // names, validated arguments, decisions; never the result payloads
 		trace.put("user", Map.of("role", query.user().role(), "department", query.user().department(),
 				"maxAccessLevel", query.user().maxAccessLevel()));
 		trace.put("guardrails", r.guardrails());

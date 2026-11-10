@@ -1,6 +1,7 @@
 package com.mimocodes.hrisrag.rag.core;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -130,6 +131,17 @@ public final class RagContract {
 	public record GuardrailDecision(String layer, String rule, String outcome, String detail) {
 	}
 
+	/**
+	 * One tool call proposed by the model and handled by our executor (Agentic only). Stores the validated arguments
+	 * and the decision, but not the result payload (it may contain personal data); only its size.
+	 *
+	 * @param outcome OK, DENIED (authorization), INVALID (validation / unknown tool), NOT_FOUND, LIMIT or ERROR
+	 * @param reason  why (e.g. SELF, DIRECT_REPORT, HR_ADMIN, NOT_OWN_DATA, the validation message)
+	 */
+	public record ToolCallTrace(int round, String name, Map<String, Object> arguments, String outcome, String reason,
+			int resultChars, long latencyMs) {
+	}
+
 	public record Timings(long totalMs, long embeddingMs, long retrievalMs, long generationMs) {
 	}
 
@@ -140,8 +152,8 @@ public final class RagContract {
 	 */
 	public record RagResult(UUID requestId, StrategyId strategy, AnswerStatus status, String answer,
 			List<Citation> citations, List<RetrievedChunk> retrieved, List<PassageCheck> passageChecks,
-			String contextSent, List<ModelCall> modelCalls, CallCounts callCounts, List<GuardrailDecision> guardrails,
-			Timings timings, RagSettings settings, String promptVersion) {
+			String contextSent, List<ModelCall> modelCalls, CallCounts callCounts, List<ToolCallTrace> toolCalls,
+			List<GuardrailDecision> guardrails, Timings timings, RagSettings settings, String promptVersion) {
 	}
 
 	public interface RagStrategy {
