@@ -66,6 +66,12 @@ Errors (all `application/problem+json`, RFC 9457):
 - `400` for validation failures and unavailable strategies;
 - `401` without valid credentials.
 
+### `GET /api/v1/experiments`, `GET /api/v1/experiments/{id}` (Task 6.2, HR_ADMIN only)
+- The list endpoint returns the latest 50 experiments: id, dataset and version, status, filter, limit, start and finish times, stop reason and result count.
+- The detail endpoint also returns each run's `aggregates` (metric, slice type and value, value, sample size) and a summary per question (case, status, latency, calls, `case_pass`, `recall_at_k`).
+- Other users get `403`, an unknown id gets `404` (both `application/problem+json`).
+- Starting a run via `POST` comes in M9; runs are started from the command line (`docs/benchmark-methodology.md` §6).
+
 ### `GET /api/v1/strategies`
 `[{ "id": "NAIVE", "available": true, "defaultTopK": 5, "chatModel": "gemini-3.5-flash-lite" }, { "id": "HYBRID", "available": false, … }]`
 

@@ -2,6 +2,7 @@ package com.mimocodes.hrisrag.security;
 
 import java.nio.charset.StandardCharsets;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -26,12 +27,15 @@ public class SecurityConfig {
 		return new BCryptPasswordEncoder();
 	}
 
+	/** Only in a web application: command-line runs (benchmark, ingestion) start without a servlet stack. */
 	@Bean
+	@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 	SecurityFilterChain api(HttpSecurity http) throws Exception {
 		http.csrf(c -> c.disable())
 				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(a -> a
 						.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info", "/error").permitAll()
+						.requestMatchers("/api/v1/experiments", "/api/v1/experiments/**").hasRole("HR_ADMIN")
 						.requestMatchers("/api/**").authenticated()
 						.anyRequest().denyAll())
 				.httpBasic(b -> b.realmName("hris-rag").authenticationEntryPoint((req, res, e) -> {

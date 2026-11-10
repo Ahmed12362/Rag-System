@@ -62,6 +62,15 @@ hrisrag:
     output-check: true              # withhold answers that leak the system prompt or a secret
   security:
     demo-password: ${APP_DEMO_PASSWORD:}   # shared password of the simulated users; .env only, stored as BCrypt
+  benchmark:
+    run: false                      # run only when requested: --hrisrag.benchmark.run=true
+    dataset-file: benchmark/hris-bench-v1.yaml
+    corpus-spec-dir: corpus-spec
+    cases: ""                       # e.g. SEC-*,FACT-EN-0* (blank = all)
+    limit: 10                       # free-tier quota guard; full run: --hrisrag.benchmark.limit=0
+    strategy: NAIVE
+    pause: 4s                       # after each chat call (rate limiting)
+    report-dir: reports/benchmark
   embedding:
     model: gemini-embedding-001     # same model for documents and queries (D5); changing it requires a full re-embed
     dimensions: 768

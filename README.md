@@ -3,9 +3,13 @@
 A standalone project that builds, evaluates and compares RAG strategies (Naive, Hybrid, Agentic) over a synthetic,
 bilingual (English / Arabic) HRIS domain. All data is synthetic; nothing connects to a real HR system.
 
-> Status: **Milestone 5: Naive RAG.** HRIS schema and synthetic data, a bilingual policy corpus (227 documents), incremental
-> ingestion (1,208 chunks, pgvector), a 100-case benchmark, and a Naive RAG chat API verified with real Gemini. Guardrails,
-> security, Hybrid and Agentic RAG come next. See [`PROJECT_PROGRESS.md`](PROJECT_PROGRESS.md).
+> Status: **Milestone 6: guardrails, login, benchmark.** What exists so far:
+> - HRIS schema and synthetic data;
+> - a bilingual policy corpus (227 documents) and incremental ingestion (1,208 chunks, pgvector);
+> - a Naive RAG chat API with simulated login and layered guardrails;
+> - a 100-case benchmark with a runner, deterministic metrics and saved experiment results.
+>
+> Hybrid and Agentic RAG come next. See [`PROJECT_PROGRESS.md`](PROJECT_PROGRESS.md).
 
 ## Tech stack (verified, see `docs/architecture.md` §1)
 
@@ -167,7 +171,23 @@ Each new question uses one embedding from the free-tier daily quota (~1,000/day)
 questions cost nothing.
 Structured questions about your own data (e.g. "how many leave days do I have left?") need tools and arrive with Agentic RAG (M8).
 
-## 8. Run the tests
+## 8. Run the benchmark (real Gemini; uses quota)
+
+```powershell
+$env:HRISRAG_BENCHMARK_CASES = "FACT-EN-02,FACT-AR-01,UNANS-EN-01,SEC-07,SEC-09"   # optional; blank = all 100
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--hrisrag.benchmark.run=true --spring.main.web-application-type=none"
+```
+
+By default at most **10** cases are run, to protect the free-tier quota. Pass `--hrisrag.benchmark.limit=0` for every
+selected case.
+- **If the quota runs out**, the run stops as PARTIAL. Continue it with `--hrisrag.benchmark.resume=<experiment id>`.
+- **Results:**
+  - the completion banner;
+  - `reports/benchmark/latest-benchmark.txt` (metrics by all / scope / language / category, plus per question);
+  - `GET /api/v1/experiments/{id}` as `hr`.
+- **More detail:** metrics and the first results are in [`docs/benchmark-methodology.md`](docs/benchmark-methodology.md) §6–8.
+
+## 9. Run the tests
 
 ```powershell
 .\mvnw.cmd -B clean verify
@@ -176,7 +196,7 @@ Structured questions about your own data (e.g. "how many leave days do I have le
 The tests start their own throwaway pgvector database with Testcontainers (Docker must be running). They do not use the
 Compose database and do not call Gemini.
 
-## 9. Reset the database
+## 10. Reset the database
 
 ```powershell
 docker compose down -v               # removes the container AND the data volume

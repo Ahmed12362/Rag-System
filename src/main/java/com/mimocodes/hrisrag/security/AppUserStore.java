@@ -24,12 +24,21 @@ public class AppUserStore implements UserDetailsService {
 	}
 
 	public Optional<AppUserPrincipal> find(String username) {
+		return findBy("username", username);
+	}
+
+	/** Used by the benchmark to act as a case's asker (programmatic, no login). */
+	public Optional<UserContext> contextForEmployee(String employeeCode) {
+		return findBy("employee_code", employeeCode).map(AppUserPrincipal::toUserContext);
+	}
+
+	private Optional<AppUserPrincipal> findBy(String column, String value) {
 		return jdbc.query("""
 				SELECT username, employee_code, role, department_code, max_access_level, password_hash, enabled
-				FROM app_user WHERE username = ?""", (rs, i) -> new AppUserPrincipal(rs.getString("username"),
+				FROM app_user WHERE %s = ?""".formatted(column), (rs, i) -> new AppUserPrincipal(rs.getString("username"),
 				rs.getString("password_hash"), rs.getBoolean("enabled"), new UserContext(rs.getString("employee_code"),
 						rs.getString("role"), rs.getString("department_code"), rs.getString("max_access_level"))),
-				username).stream().findFirst();
+				value).stream().findFirst();
 	}
 
 	/** Users without a password hash cannot log in; they are reported as unknown (no account enumeration). */

@@ -11,7 +11,7 @@
 > | `app_user` | `V5__app_users.sql` | **Implemented** (Task 6.1). Changes from the draft: `employee_code` instead of an `employee_id` FK (accounts survive an HRIS reseed); adds `department_code` and `enabled`. `password_hash` is BCrypt, written at startup from `APP_DEMO_PASSWORD`, and NULL (login disabled) in the migration |
 > | Documents / ingestion | `V3__document_ingestion.sql` | **Implemented** (Task 4.1) |
 > | Traces | `V4__rag_traces_and_query_cache.sql` | **Implemented** (Task 5.1); since Task 6.1 the trace JSON also holds `passageChecks`, `callCounts` and the user's role, department and access level |
-> | Benchmark / experiments | n/a | Planned, M6 (minimal) and M9 |
+> | Benchmark / experiments | `V6__benchmark_experiments.sql` | **Implemented, minimal** (Task 6.2). Changes from the draft: no `benchmark_case` table (cases stay in the checksummed YAML, so `question_result` keys on `case_key`); `metric_aggregate.slice_type` adds `SCOPE`; `experiment.stop_reason` replaces `error_message`. Cost estimates and repeated trials come in M9 |
 >
 > Change made during implementation: `employee_compensation.currency` is `VARCHAR(3)` with a `char_length = 3` check, instead of
 > `CHAR(3)`. Hibernate schema validation rejects `bpchar` for a `String` column, and a plain type is preferred over mapping overrides.

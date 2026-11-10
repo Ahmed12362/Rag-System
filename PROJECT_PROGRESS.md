@@ -133,6 +133,20 @@
 - `retrieved` stays the raw retrieval, so retrieval metrics and the planted SEC-09..11 documents are unaffected; corpus files are unchanged.
 - Tests: 165/165 (61 new). Real Gemini check: 10 questions, all as expected, 4 new embeddings (details: `docs/rag-strategies.md` §6).
 
+### Task 6.2: Minimal benchmark runner, metrics, experiment persistence (Milestone 6), 2026-11-10
+- Flyway V6: `benchmark_dataset` (checksum guard), `experiment`, `experiment_run`, `question_result` (UK run+case, raw
+  results), `metric_aggregate` (slices ALL / SCOPE / LANGUAGE / CATEGORY with sample sizes). Cases stay in the versioned YAML.
+- `evaluation`: `RetrievalMetrics` (document-level Recall/Precision/MRR/nDCG/Hit), `CaseScorer` (behaviour, must-contain with
+  alternatives and Arabic-Indic digits, leaks, language, citations, case/security pass, status mix, cost), `MetricAggregator`.
+- `experiment`: `ExperimentService` (same `RagService` as the chat; asker from `app_user`; pause after chat calls; quota →
+  PARTIAL + resume), `BenchmarkRunner` (CLI, banners, `reports/benchmark/latest-benchmark.txt`), `ExperimentStore`, read-only
+  `GET /api/v1/experiments[/{id}]` (HR_ADMIN). Default `limit=10` as a quota guard.
+- Naive strategy reports quota errors as guardrail rule `PROVIDER_QUOTA` (safe text) so the benchmark can stop and resume.
+- Fix found by the real run: the security filter chain is now web-only, because command-line runs without a web server failed to start.
+- Real smoke run (experiment 1, 10 cases, 2 new embeddings, 9 chat calls): case_pass 0.80 overall, 0.89 RAG_ONLY, security 3/3.
+  Findings: English questions sometimes answered in Arabic (language_match 0.71); multi-hop misses the second fact; tool case
+  fails as expected (`docs/benchmark-methodology.md` §8).
+
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
 - D2: Flyway owns the schema (`ddl-auto=validate`, no Spring AI auto schema).
@@ -185,6 +199,10 @@
 - D37: Indirect injection is redacted per SENTENCE, not per document, so legitimate facts in a planted document survive
   (e.g. the lost-badge rule in the parking notice). Raw retrieval is kept for metrics; screening outcomes are recorded per
   passage. FLAG modes let the benchmark measure the model's own resistance separately from the screening layer.
+- D38: Benchmark metrics are deterministic for now (no LLM judge, to save quota). Retrieval is scored on distinct
+  documents. STRUCTURED cases are reported in a separate `TOOLS_REQUIRED` scope so tool-less strategies are not misread.
+- D39: Benchmark cases stay in the versioned YAML, guarded by a registered checksum, instead of a `benchmark_case` table.
+  Raw per-question results are stored, and aggregates are always recomputed from them (resume-safe).
 - D18: The HRIS `data` module is internally one module. Sub-capabilities may reference each other's entities (e.g. `LeaveRequest → Employee`);
   other modules must go through services (ArchUnit rule 1).
 
@@ -197,9 +215,15 @@
 - Injection patterns are a narrow, English/Arabic list: paraphrased or other-language attacks can pass the input check (then
   only the grounded prompt and access control apply). Measured in the benchmark (M6.2/M9).
 - The output check catches verbatim prompt fragments and secret values, not translated or paraphrased leaks.
+- Naive sometimes answers English questions in Arabic (found by the benchmark, Task 6.2). Candidate: prompt `grounded-v2`
+  that names the detected question language. Needs approval and a benchmark re-run.
+- Only a 10-case real benchmark has been run (quota). The full 100-case run (`--hrisrag.benchmark.limit=0`) costs about
+  85 embeddings and about 95 chat calls.
 
 ## Test status
-- `mvnw clean verify` (Task 6.1 final): **165 tests, 165 passed, 0 failed** (adds GuardrailUnitTest 43, GuardrailFlowIntegrationTest 12,
+- `mvnw clean verify` (Task 6.2 final): **174 tests, 174 passed, 0 failed** (adds EvaluationUnitTest 4,
+  BenchmarkIntegrationTest 5).
+- Previously `mvnw clean verify` (Task 6.1 final): **165 tests, 165 passed, 0 failed** (adds GuardrailUnitTest 43, GuardrailFlowIntegrationTest 12,
   SecurityIntegrationTest 6). False-positive checks on real data: of the 100 benchmark questions only SEC-07/SEC-08 are flagged;
   of the 227 corpus documents only the 5 planted sentences are redacted.
 - Previously `mvnw test` (Task 5.1 final): **104 tests, 104 passed, 0 failed** (adds RagUnitTest 4, RagFlowIntegrationTest 5,
@@ -215,6 +239,6 @@
   **The compose DB currently holds the STANDARD dataset.**
 
 ## Next proposed task
-- Task 6.2 (awaiting approval): minimal benchmark runner, metrics (retrieval, answer, security, cost from `callCounts`) and
-  experiment persistence.
+- Milestone 7 (Hybrid RAG: keyword + vector fusion), or first a small `grounded-v2` prompt fix for language following.
+  Both need approval.
 - Regenerate the AI Studio key after submission (it was shared in chat).

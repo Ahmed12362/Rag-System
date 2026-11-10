@@ -9,7 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.mimocodes.hrisrag.ai.EmbeddingService;
 import com.mimocodes.hrisrag.ai.GenerationService;
+import com.mimocodes.hrisrag.ai.ProviderErrors;
 import com.mimocodes.hrisrag.document.corpus.TextChecks;
 import com.mimocodes.hrisrag.rag.citation.CitationValidator;
 import com.mimocodes.hrisrag.rag.core.RagContract.AnswerStatus;
@@ -213,8 +215,12 @@ public class NaiveRagStrategy implements RagStrategy {
 			// Full provider/infrastructure details go to the server log only. The response (and trace) get a fixed,
 			// safe description: raw provider errors can contain project ids, URLs and configuration details.
 			log.error("request {} failed: {}", run.requestId, e.getMessage(), e);
-			run.guard("SYSTEM", "PROVIDER_OR_INFRASTRUCTURE", "ERROR",
-					"upstream model or infrastructure error (details in server logs, request " + run.requestId + ")");
+			// Quota exhaustion gets its own rule id (still a safe, fixed text) so callers such as the benchmark can stop
+			// and resume later instead of scoring an infrastructure problem as a wrong answer.
+			boolean quota = e instanceof EmbeddingService.EmbeddingQuotaExceededException || ProviderErrors.isRateLimit(e);
+			run.guard("SYSTEM", quota ? "PROVIDER_QUOTA" : "PROVIDER_OR_INFRASTRUCTURE", "ERROR",
+					(quota ? "model provider quota or rate limit reached" : "upstream model or infrastructure error")
+							+ " (details in server logs, request " + run.requestId + ")");
 			run.context = "";
 			return run.finish(AnswerStatus.ERROR, run.arabic ? ERROR_AR : ERROR_EN, List.of());
 		}
