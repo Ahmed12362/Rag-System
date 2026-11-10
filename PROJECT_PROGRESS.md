@@ -61,6 +61,15 @@
 - Pilot (Gemini, real calls): EN and AR Annual Leave Policy. All numeric facts present, no unplanned numbers, length in range after a
   prompt fix. `gemini-3.5-flash` hit a transient HTTP 503 → retry/backoff is required. Spec consistency check: 0 errors.
 
+### Task 3.2: Fact registry, document plan, corpus tooling, pilot batch (Milestone 3), 2026-11-10
+- `corpus-spec/facts.yaml` (125 facts) and `documents.yaml` (227 documents across 10 groups; 124 EN / 103 AR, 13 Egyptian FAQs).
+- `document.corpus` package: CorpusSpec (load/expand/consistency rules), DocumentMetadata (front matter), CorpusDocumentValidator,
+  PromptBuilder, CorpusGenerator (retry/backoff, feedback regeneration, resume, pacing), CorpusManifest (SHA-256), CorpusRunner.
+- `config/ChatOptionsFactory` + `ModelProviderConfiguration` (Gemini options); fixes the ClassCastException found in the first run.
+- Pilot: 21/21 documents generated and validated (32 API calls, ~30k tokens); validate-only: 0 problems.
+- Spec checks caught 2 real issues before generation: the FAQ count was 52, not 48 (inventory corrected), and a department-only fact
+  was used in a company-wide document (fixed).
+
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
 - D2: Flyway owns the schema (`ddl-auto=validate`, no Spring AI auto schema).
@@ -89,6 +98,8 @@
   manifest. Reproducibility comes from committed files, not regeneration. `generation` metadata is never ingested.
 - D23: Corpus precedence: ACTIVE only → newest effective date → department-scoped ACTIVE overrides company policy for that
   department → access level ≤ user. All intentional conflicts are declared in documents.yaml.
+- D24: Corpus tooling in Java inside the app (`--hrisrag.corpus.generate|validate-only`), consistent with seeding.
+- D25: Provider-specific chat options are created by a `ChatOptionsFactory` bean (Spring AI's Gemini model rejects portable options).
 - D18: The HRIS `data` module is internally one module. Sub-capabilities may reference each other's entities (e.g. `LeaveRequest → Employee`);
   other modules must go through services (ArchUnit rule 1).
 
@@ -99,13 +110,12 @@
 - Actuator health shows full details (local dev only). Restrict in Milestone 6.
 
 ## Test status
-- `mvnw clean verify` (Task 2.2): **44 tests, 44 passed, 0 failed.** HrisConstraintTest 13, HrisRepositoryTest 8,
-  SyntheticDataGeneratorTest 6, SeedIntegrationTest 4, SeedValidatorTest 5, HrisRagApplicationTests 3, ArchitectureRulesTest 5.
+- `mvnw clean verify` (Task 3.2): **69 tests, 69 passed, 0 failed** (adds CorpusSpecTest 5, CorpusDocumentValidatorTest 9,
+  CorpusGeneratorTest 7, PromptBuilderTest 3, ModelProviderConfigurationTest 1).
 - Manual (compose DB): STANDARD and LARGE seeded and validated (0 failures); STANDARD fingerprint identical across two runs;
   representative SQL (remaining leave, request status, upcoming meetings, lateness by department) returns the expected values.
   **The compose DB currently holds the STANDARD dataset.**
 
 ## Next proposed task
-- Milestone 3, Task 3.2: Full fact registry and document plan (~235 entries); corpus generator (Java/Spring AI or script, with
-  retry/backoff, pacing, resume); validator; generate, review a sample, and freeze `corpus/` + `manifest.json`.
-  Pending user decision: the generation model (all flash-lite vs flash for Arabic).
+- Milestone 3, Task 3.3: Prompt tweak (no version/date in normal documents), generate the remaining 206 documents, review a sample
+  per group, `validate-only --require-complete`, freeze `corpus/` + manifest. Pending user go/no-go on the pilot quality.

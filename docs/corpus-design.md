@@ -73,20 +73,23 @@ access_level: INTERNAL
 | `scope_department` | department code or null | Department overrides |
 | `access_level` | PUBLIC, INTERNAL, CONFIDENTIAL | Access filtering before retrieval |
 
-## 4. Inventory (target ≈ 235 documents, about 55% English / 45% Arabic)
+## 4. Inventory (implemented in Task 3.2: **227 documents**, 125 facts; asserted by `CorpusSpecTest`)
 
-| Group | Count | Benchmark purpose |
-|---|---|---|
-| Core policies (12 topics), English and Arabic | 24 | Factual and cross-lingual questions |
-| Superseded older versions of 5 policies | 5 | Old rules must not win |
-| Procedures (step-by-step) | 30 | Multi-hop and how-to questions |
-| FAQ pages (some in Egyptian colloquial Arabic) | 60 | Paraphrase and dialect matching |
-| Handbook sections | 40 | Breadth |
-| Department-specific policies | 30 | Scope filtering and precedence |
-| Confidential documents | 15 | Access filtering and security tests |
-| Drafts (not yet in force) | 5 | Must never be retrieved |
-| Near-duplicate distractors | 20 | Hard negatives for precision |
-| Documents with embedded injection attempts | 5 | Prompt-injection guardrail tests |
+| Group | Planned (Task 3.1) | Actual | Benchmark purpose |
+|---|---|---|---|
+| CORE: core policies (12 topics), English and Arabic | 24 | 24 | Factual and cross-lingual questions |
+| SUPERSEDED: older versions | 5 | 6 | Old rules must not win (annual leave notice 7→14, remote 1→2 days, grace 10→15 min, sick certificate 2→1 day, agenda 48→24 h, Ramadan 15:00→16:00) |
+| PROCEDURE: step-by-step | 30 | 31 | Multi-hop and how-to questions |
+| FAQ: 13 topics × (EN part 1, EN part 2, AR, Egyptian AR) | 60 | 52 | Paraphrase and dialect matching (13 Egyptian colloquial pages) |
+| HANDBOOK: sections | 40 | 40 | Breadth |
+| DEPARTMENT: department-specific (STANDARD-profile departments only) | 30 | 30 | Scope filtering and precedence (e.g. Customer Support has no remote work) |
+| CONFIDENTIAL: HR/management only | 15 | 14 | Access filtering and salary/disciplinary security tests |
+| DRAFT: not yet in force (effective 2027) | 5 | 5 | Must never be retrieved |
+| DISTRACTOR: other populations (agency staff, trainees, board, ...) | 20 | 20 | Hard negatives for precision |
+| INJECTION: embedded instructions (3 EN, 2 AR) | 5 | 5 | Prompt-injection guardrail tests |
+
+Distractors deliberately target **other populations** (agency staff, summer trainees, seconded consultants, the board),
+never the Company's own employees, so they never contradict the HRIS data.
 
 Topics: annual leave, sick leave, attendance and lateness, working hours, remote work, meetings, rewards and recognition, employee
 handbook, onboarding, leave request procedure, HR FAQs, disciplinary procedure.
@@ -142,7 +145,28 @@ Findings:
    write benchmark questions independently in user language (Task 3.3), never derived from `statement_en` text.
 5. Prompt fix for Task 3.2: tell the model to refer to "the Company" naturally, not in every sentence.
 
-### Full-corpus estimate (≈235 documents, from the measured pilot)
+### Task 3.2 pilot batch (Java tooling, `gemini-3.5-flash-lite`, temperature 0.3)
+
+Command: `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--hrisrag.corpus.generate=true --hrisrag.corpus.pilot=true"`
+
+- **21 documents** (first EN and AR document of every group, plus one Egyptian FAQ): **21 validated, 0 failed**.
+- 32 API calls (about 1.5 per document): 10 first drafts failed validation and were fixed by the feedback loop, e.g. a missing
+  fact number, an invented number, or a wrong section count.
+- Tokens: 10,456 prompt / 19,684 completion / 0 thinking. Latency 3–20 s per document.
+- `--hrisrag.corpus.validate-only=true`: 21 files checked, 0 problems, manifest checksums match.
+- **Bug found and fixed:** Spring AI 2.0.1's Gemini ChatModel casts prompt options to `GoogleGenAiChatOptions` and rejects portable
+  `ChatOptions` (ClassCastException before any HTTP call). Fixed with a `ChatOptionsFactory` bean in `config/`, so callers stay
+  provider-neutral (D8). A regression test was added.
+
+Manual review (4 documents read in full):
+- **Egyptian FAQ:** natural colloquial Egyptian Arabic, all facts correct; one typo ("تكغل").
+- **Arabic core policy:** correct, fluent MSA; 3 minor errors ("المستقططة", "المرحمة", "3 يوم" instead of "3 أيام").
+- **English superseded v1.0:** states the old 7-day notice and never the current 14 days.
+- **Arabic injection document:** the planted sentence is present verbatim as a standalone paragraph.
+- **Recurring artefact:** the model writes "version X, effective <date>" into the body of normal documents. Planned prompt fix for Task 3.3:
+  mention version and dates only in SUPERSEDED/DRAFT documents.
+
+### Full-corpus estimate (from the measured pilot)
 
 | Option | Tokens (approx.) | Sequential time (approx.) | Note |
 |---|---|---|---|

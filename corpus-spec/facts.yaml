@@ -1,69 +1,287 @@
-# Fact registry: the single source of truth for every policy fact stated in the corpus.
-# EXAMPLE SUBSET (Task 3.1). The full registry is written in Task 3.2.
+# Fact registry: the single source of truth for every policy fact stated in the corpus (Task 3.2).
 #
 # Rules:
-# - Every number a document states must come from a fact listed for that document in documents.yaml.
-# - Facts marked `rule: D21-*` must equal the behaviour of the synthetic HRIS data generator (docs/synthetic-dataset.md §4).
-# - Never put benchmark questions or expected answers here; those live in benchmark/ (Task 3.3).
+# - Every number a generated document states must appear in the `value` or `statement_en` of a fact listed for that document.
+# - The digits in `value` are REQUIRED to appear in every document that lists the fact.
+# - Facts tagged `rule: D21-*` must match the synthetic HRIS data generator (docs/synthetic-dataset.md §4);
+#   CorpusSpecTest cross-checks them against WorkCalendar / AnchorScenario / the generator constants.
+# - `_V1` facts belong to SUPERSEDED versions; `DRAFT_` facts to drafts; `DIST_` facts to distractor documents
+#   (they apply to a different population and never to the Company's own employees).
+# - Never put benchmark questions or expected answers here (they live in benchmark/).
 
 facts:
-  - id: ANNUAL_LEAVE_DAYS
-    value: 21
-    unit: working days per year
-    statement_en: Employees are entitled to 21 working days of paid annual leave per calendar year.
-    rule: D21-annual-leave
+  # ---------------------------------------------------------------- Annual leave
+  - {id: ANNUAL_LEAVE_DAYS, value: 21, rule: D21-annual-leave,
+     statement_en: "Employees are entitled to 21 working days of paid annual leave per calendar year."}
+  - {id: ANNUAL_LEAVE_LONG_SERVICE_DAYS, value: 30, rule: D21-annual-leave,
+     statement_en: "Employees with 10 or more full years of service are entitled to 30 working days of annual leave per year."}
+  - {id: LONG_SERVICE_YEARS, value: 10, rule: D21-annual-leave,
+     statement_en: "The long-service entitlement applies from the calendar year after 10 full years of service are completed."}
+  - {id: ANNUAL_LEAVE_NOTICE_DAYS, value: 14,
+     statement_en: "Annual leave requests should be submitted at least 14 calendar days before the first day of leave; shorter notice is accepted only at the manager's discretion."}
+  - {id: ANNUAL_LEAVE_NOTICE_DAYS_V1, value: 7, superseded: true,
+     statement_en: "Annual leave requests must be submitted at least 7 calendar days in advance."}
+  - {id: ANNUAL_LEAVE_CARRY_OVER_DAYS, value: 5,
+     statement_en: "Up to 5 unused annual leave days may be carried over to the next year and must be used by 31 March; any other unused days are forfeited."}
+  - {id: ANNUAL_LEAVE_MAX_CONSECUTIVE_DAYS, value: 15,
+     statement_en: "A single annual leave request may cover at most 15 consecutive working days unless the Head of Human Resources approves a longer period."}
+  - {id: LEAVE_DECISION_DAYS, value: 3,
+     statement_en: "Managers must approve or reject a leave request within 3 working days of submission."}
+  - {id: LEAVE_APPROVER, value: "direct manager", rule: D21-approvals,
+     statement_en: "Leave requests are approved by the employee's direct manager; requests from department heads are approved by the Head of Human Resources."}
+  - {id: LEAVE_COUNTED_IN_WORKING_DAYS, value: "Sunday to Thursday", rule: D21-calendar,
+     statement_en: "Leave is counted in working days (Sunday to Thursday); Friday, Saturday and official public holidays are not deducted from any leave balance."}
+  - {id: LEAVE_REQUEST_CHANNEL, value: "HR self-service portal",
+     statement_en: "All leave requests are submitted and tracked through the HR self-service portal; email or verbal requests are not valid."}
+  - {id: LEAVE_BALANCE_FORMULA, value: "entitled minus used minus pending", rule: D21-balances,
+     statement_en: "The remaining balance shown in the portal equals the yearly entitlement minus approved days minus days in pending requests."}
+  - {id: LEAVE_CANCEL_BEFORE_START, value: "before the first day",
+     statement_en: "An employee may cancel a pending or approved leave request in the portal any time before the first day of leave; the days return to the balance."}
 
-  - id: ANNUAL_LEAVE_LONG_SERVICE_DAYS
-    value: 30
-    unit: working days per year
-    statement_en: Employees with 10 or more years of service are entitled to 30 working days of annual leave per year.
-    rule: D21-annual-leave
+  # ---------------------------------------------------------------- Sick, casual, unpaid and other leave
+  - {id: SICK_LEAVE_DAYS, value: 15, rule: D21-annual-leave,
+     statement_en: "Employees are entitled to 15 working days of paid sick leave per calendar year."}
+  - {id: SICK_NOTIFY_TIME, value: "10:00",
+     statement_en: "An employee who is sick must inform their direct manager before 10:00 on the first day of absence."}
+  - {id: SICK_REQUEST_DEADLINE_DAYS, value: 2, rule: D21-sick-reporting,
+     statement_en: "The sick leave request must be recorded in the HR portal no later than 2 calendar days after the first day of absence."}
+  - {id: SICK_CERTIFICATE_THRESHOLD_DAYS, value: 1,
+     statement_en: "A medical certificate is required for any sick leave longer than 1 working day."}
+  - {id: SICK_CERTIFICATE_THRESHOLD_DAYS_V1, value: 2, superseded: true,
+     statement_en: "A medical certificate is required for any sick leave longer than 2 working days."}
+  - {id: SICK_CERTIFICATE_DEADLINE_DAYS, value: 3,
+     statement_en: "The medical certificate must be uploaded to the HR portal within 3 working days of returning to work."}
+  - {id: SICK_LONG_TERM_REVIEW, value: 15,
+     statement_en: "Sick leave beyond the 15-day annual entitlement is reviewed case by case by Human Resources with a medical report."}
+  - {id: CASUAL_LEAVE_DAYS, value: 6, rule: D21-annual-leave,
+     statement_en: "Employees have 6 days of casual leave per calendar year for urgent personal matters."}
+  - {id: CASUAL_LEAVE_PER_REQUEST, value: 1, rule: D21-casual,
+     statement_en: "Casual leave is taken 1 day per request."}
+  - {id: CASUAL_LEAVE_SAME_DAY_TIME, value: "10:00",
+     statement_en: "Casual leave may be requested on the same day, provided the request is submitted before 10:00."}
+  - {id: UNPAID_LEAVE_MAX_DAYS, value: 30,
+     statement_en: "Unpaid leave of up to 30 working days per year may be granted with approval from the direct manager and Human Resources; it has no balance."}
+  - {id: UNPAID_LEAVE_NOTICE_DAYS, value: 30,
+     statement_en: "Unpaid leave should be requested at least 30 calendar days in advance except in emergencies."}
+  - {id: STUDY_LEAVE_DAYS, value: 5,
+     statement_en: "Employees sitting an approved professional exam may take up to 5 days of study leave per year, deducted from annual leave."}
 
-  - id: LONG_SERVICE_YEARS
-    value: 10
-    unit: years of service
-    statement_en: The long-service entitlement applies after 10 full years of service.
-    rule: D21-annual-leave
+  # ---------------------------------------------------------------- Attendance and lateness
+  - {id: WORK_START_TIME, value: "09:00", rule: D21-hours,
+     statement_en: "The working day starts at 09:00."}
+  - {id: WORK_END_TIME, value: "17:00", rule: D21-hours,
+     statement_en: "The working day ends at 17:00."}
+  - {id: WORK_WEEK, value: "Sunday to Thursday", rule: D21-calendar,
+     statement_en: "The working week runs from Sunday to Thursday; Friday and Saturday are the weekend."}
+  - {id: LATE_GRACE_MINUTES, value: 15, rule: D21-lateness,
+     statement_en: "Arrivals up to 15 minutes after the 09:00 start time are within the grace period and are not recorded as late."}
+  - {id: LATE_GRACE_MINUTES_V1, value: 10, superseded: true,
+     statement_en: "Arrivals up to 10 minutes after the 09:00 start time were within the grace period."}
+  - {id: LATE_DEDUCTION_THRESHOLD, value: 3,
+     statement_en: "More than 3 late arrivals in the same calendar month result in a deduction of a quarter of a day's pay for each additional late arrival."}
+  - {id: UNEXCUSED_ABSENCE_DEDUCTION, value: "one day's pay",
+     statement_en: "Each day of unexcused absence is deducted at one day's pay and may lead to disciplinary action."}
+  - {id: CHECKIN_METHOD, value: "badge reader",
+     statement_en: "Attendance is recorded by the office badge reader or, on approved remote days, by checking in through the HR mobile app."}
+  - {id: MISSED_CHECKIN_CORRECTION_DAYS, value: 2,
+     statement_en: "A missed or incorrect check-in must be corrected through the portal within 2 working days, with manager confirmation."}
+  - {id: ATTENDANCE_ON_LEAVE, value: "on leave", rule: D21-attendance,
+     statement_en: "Days covered by an approved leave request are recorded as on leave and do not require a check-in."}
 
-  - id: ANNUAL_LEAVE_NOTICE_DAYS
-    value: 14
-    unit: calendar days
-    statement_en: Annual leave requests should be submitted at least 14 calendar days before the first day of leave; shorter notice is at the manager's discretion.
+  # ---------------------------------------------------------------- Working hours
+  - {id: DAILY_WORKING_HOURS, value: 8, rule: D21-hours,
+     statement_en: "The standard working day is 8 hours, including a 30-minute break."}
+  - {id: WEEKLY_WORKING_HOURS, value: 40,
+     statement_en: "The standard working week is 40 hours."}
+  - {id: BREAK_MINUTES, value: 30,
+     statement_en: "Employees are entitled to a paid break of 30 minutes per day, usually taken between 12:00 and 14:00."}
+  - {id: RAMADAN_HOURS, value: "10:00 to 16:00",
+     statement_en: "During Ramadan the working day runs from 10:00 to 16:00 (6 hours)."}
+  - {id: RAMADAN_HOURS_V1, value: "10:00 to 15:00", superseded: true,
+     statement_en: "During Ramadan the working day ran from 10:00 to 15:00 (5 hours)."}
+  - {id: OVERTIME_APPROVAL, value: "prior written approval",
+     statement_en: "Overtime requires prior written approval from the direct manager through the portal; unapproved overtime is not compensated."}
+  - {id: OVERTIME_MAX_HOURS_WEEK, value: 10,
+     statement_en: "Approved overtime may not exceed 10 hours per week."}
+  - {id: DRAFT_WELLNESS_LEAVE_DAYS, value: 2, draft: true,
+     statement_en: "(Draft proposal) A new wellness leave type would give every employee 2 paid days per year for mental health and rest."}
+  - {id: FLEXIBLE_START_WINDOW, value: "08:00 to 10:00", draft: true,
+     statement_en: "(Draft proposal) Employees could choose a start time between 08:00 and 10:00 while working 8 hours."}
 
-  - id: ANNUAL_LEAVE_NOTICE_DAYS_V1
-    value: 7
-    unit: calendar days
-    statement_en: (Superseded rule, version 1.0 only) Annual leave requests had to be submitted at least 7 days in advance.
-    superseded: true
+  # ---------------------------------------------------------------- Remote work
+  - {id: REMOTE_DAYS_PER_WEEK, value: 2,
+     statement_en: "Eligible employees may work remotely up to 2 days per week with their direct manager's approval."}
+  - {id: REMOTE_DAYS_PER_WEEK_V1, value: 1, superseded: true,
+     statement_en: "Eligible employees could work remotely 1 day per week with their manager's approval."}
+  - {id: DRAFT_REMOTE_DAYS_PER_WEEK, value: 3, draft: true,
+     statement_en: "(Draft proposal) Eligible employees would be allowed to work remotely up to 3 days per week."}
+  - {id: REMOTE_ELIGIBLE_DEPARTMENTS, value: "Engineering, IT, Marketing", rule: D21-remote,
+     statement_en: "Remote work is available in Engineering, IT, Marketing, Data and Analytics, Product, User Experience, Mobile, Infrastructure and Information Security; other departments work on-site."}
+  - {id: REMOTE_REQUEST_NOTICE_DAYS, value: 2,
+     statement_en: "Remote days must be requested in the portal at least 2 working days in advance."}
+  - {id: REMOTE_CORE_HOURS, value: "10:00 to 15:00",
+     statement_en: "On remote days employees must be online and reachable during core hours from 10:00 to 15:00."}
+  - {id: CS_NO_REMOTE, value: "on-site only", scope_department: D-CS,
+     statement_en: "Customer Support agents work on-site only because of shift coverage requirements; remote work is not available in Customer Support."}
 
-  - id: ANNUAL_LEAVE_CARRY_OVER_DAYS
-    value: 5
-    unit: working days
-    statement_en: Up to 5 unused annual leave days may be carried over and must be used by 31 March of the following year.
+  # ---------------------------------------------------------------- Meetings
+  - {id: MEETING_AGENDA_HOURS, value: 24,
+     statement_en: "The organizer must share the meeting agenda at least 24 hours before the meeting."}
+  - {id: MEETING_AGENDA_HOURS_V1, value: 48, superseded: true,
+     statement_en: "The organizer had to share the meeting agenda at least 48 hours before the meeting."}
+  - {id: MEETING_MAX_DURATION_MINUTES, value: 60,
+     statement_en: "Internal meetings should not exceed 60 minutes; longer sessions need a break."}
+  - {id: MEETING_APPROVAL_RULE, value: 10,
+     statement_en: "Meetings with external participants or more than 10 attendees require approval from the department head before invitations are confirmed."}
+  - {id: MEETING_RESPONSE_HOURS, value: 24,
+     statement_en: "Invitees should accept, decline or mark an invitation as tentative within 24 hours."}
+  - {id: MEETING_MINUTES_HOURS, value: 24,
+     statement_en: "Meeting minutes and action items must be shared within 24 hours after the meeting."}
+  - {id: MEETING_QUIET_HOURS, value: "15:00",
+     statement_en: "No internal meetings may be scheduled after 15:00 on Thursdays."}
+  - {id: MEETING_ROOM_BOOKING, value: "room calendar",
+     statement_en: "Meeting rooms are booked through the shared room calendar; bookings not used within 10 minutes of the start are released."}
 
-  - id: LEAVE_APPROVER
-    value: direct manager
-    statement_en: Leave requests are approved by the employee's direct manager; department heads are approved by the Head of Human Resources.
-    rule: D21-approvals
+  # ---------------------------------------------------------------- Rewards and recognition
+  - {id: EOM_PER_DEPARTMENT, value: "one", rule: D21-rewards,
+     statement_en: "Each department may select one Employee of the Month."}
+  - {id: EOM_NOMINATION_DAY, value: 25,
+     statement_en: "Employee of the Month nominations must be submitted by managers by the 25th day of the month."}
+  - {id: SPOT_AWARD_MAX_PER_YEAR, value: 3,
+     statement_en: "An employee may receive at most 3 spot awards per calendar year."}
+  - {id: BONUS_ELIGIBILITY_MONTHS, value: 6,
+     statement_en: "Employees must have completed 6 months of service to be eligible for the annual performance bonus."}
+  - {id: PERFECT_ATTENDANCE_CERTIFICATE, value: "quarter",
+     statement_en: "Employees with no late arrivals and no unexcused absences in a calendar quarter receive a perfect attendance certificate."}
+  - {id: REWARD_TYPES, value: "spot award", rule: D21-rewards,
+     statement_en: "Recognition types are: spot award, Employee of the Month, certificate, performance bonus and promotion recognition."}
 
-  - id: LEAVE_COUNTED_IN_WORKING_DAYS
-    value: Sunday to Thursday, excluding official public holidays
-    statement_en: Leave is counted in working days (Sunday to Thursday); weekends and official public holidays are not deducted.
-    rule: D21-calendar
+  # ---------------------------------------------------------------- Disciplinary
+  - {id: DISCIPLINARY_STEPS, value: "verbal warning", rule: D21-disciplinary,
+     statement_en: "Disciplinary steps are, in order: verbal warning, written warning, final warning, salary deduction and suspension; serious misconduct may skip steps."}
+  - {id: WARNING_VALIDITY_MONTHS, value: 12,
+     statement_en: "A warning remains active on the employee's file for 12 months."}
+  - {id: INVESTIGATION_DAYS, value: 5,
+     statement_en: "Human Resources completes a disciplinary investigation within 5 working days of the complaint."}
+  - {id: APPEAL_DAYS, value: 7,
+     statement_en: "An employee may appeal a disciplinary decision in writing within 7 calendar days."}
+  - {id: SUSPENSION_MAX_DAYS, value: 5,
+     statement_en: "A disciplinary suspension may not exceed 5 working days."}
+  - {id: DISCIPLINARY_CONFIDENTIAL, value: "confidential",
+     statement_en: "Disciplinary records are confidential and visible only to Human Resources and the employee's direct manager."}
 
-  - id: LATE_GRACE_MINUTES
-    value: 15
-    unit: minutes
-    statement_en: Arrivals up to 15 minutes after the 09:00 start time are within the grace period and are not recorded as late.
-    rule: D21-lateness
+  # ---------------------------------------------------------------- Onboarding, employment lifecycle
+  - {id: PROBATION_MONTHS, value: 3,
+     statement_en: "New employees serve a probation period of 3 months."}
+  - {id: ORIENTATION_DAYS, value: 5,
+     statement_en: "New joiners complete the orientation programme within their first 5 working days."}
+  - {id: IT_ACCOUNT_DAY_ONE, value: "first day",
+     statement_en: "Laptop, badge and system accounts are ready on the employee's first day."}
+  - {id: ONBOARDING_BUDDY, value: "buddy",
+     statement_en: "Every new joiner is assigned a buddy from their team for the probation period."}
+  - {id: ONBOARDING_DOCUMENTS_DAYS, value: 10,
+     statement_en: "New joiners must submit their national ID copy, academic certificates and bank details within 10 working days of joining."}
+  - {id: RESIGNATION_NOTICE_DAYS, value: 30,
+     statement_en: "Employees must give 30 calendar days of written notice when resigning."}
+  - {id: EXIT_CLEARANCE_DAYS, value: 3,
+     statement_en: "Company equipment must be returned and exit clearance completed by the last working day; final settlement is paid within 3 weeks of clearance."}
+  - {id: PERSONAL_DATA_UPDATE_DAYS, value: 7,
+     statement_en: "Employees must update changes to personal data (address, marital status, emergency contact) in the portal within 7 days."}
 
-  - id: REMOTE_DAYS_PER_WEEK
-    value: 2
-    unit: days per week
-    statement_en: Eligible employees may work remotely up to 2 days per week with their manager's approval.
+  # ---------------------------------------------------------------- Handbook / general
+  - {id: PAYDAY, value: 25,
+     statement_en: "Salaries are paid on the 25th day of each month; when it falls on a weekend or holiday, payment is made on the previous working day."}
+  - {id: PAYSLIP_PORTAL, value: "portal",
+     statement_en: "Payslips are available in the HR self-service portal."}
+  - {id: DRESS_CODE, value: "business casual",
+     statement_en: "The dress code is business casual; formal attire is expected for client meetings."}
+  - {id: HEALTH_INSURANCE, value: "first day",
+     statement_en: "Employees and their registered dependants are covered by medical insurance from the first day of employment."}
+  - {id: TRAINING_HOURS_PER_YEAR, value: 40,
+     statement_en: "Each employee is expected to complete at least 40 hours of training per year."}
+  - {id: PERFORMANCE_REVIEW_CYCLE, value: "twice a year",
+     statement_en: "Performance reviews are held twice a year, in June and December."}
+  - {id: GRIEVANCE_RESPONSE_DAYS, value: 10,
+     statement_en: "Human Resources responds to a formal grievance within 10 working days."}
+  - {id: PASSWORD_CHANGE_DAYS, value: 90,
+     statement_en: "System passwords must be changed every 90 days and must not be shared."}
+  - {id: LOST_BADGE_REPORT_HOURS, value: 24,
+     statement_en: "A lost badge must be reported to Administration within 24 hours so it can be deactivated."}
+  - {id: REFERRAL_PROBATION, value: "after probation",
+     statement_en: "A referral reward is granted when the referred candidate completes probation."}
+  - {id: INTERNAL_TRANSFER_MONTHS, value: 12,
+     statement_en: "Employees may apply for an internal transfer after 12 months in their current role."}
+  - {id: PUBLIC_HOLIDAYS_FIXED, value: "7 January", rule: D21-calendar,
+     statement_en: "Fixed official holidays are 7 January, 25 January, 25 April, 1 May, 30 June, 23 July and 6 October; Islamic holidays and Sham el-Nessim follow the official annual announcement."}
+  - {id: HR_CONTACT_CHANNEL, value: "HR helpdesk",
+     statement_en: "Questions about HR policies are raised through the HR helpdesk in the portal."}
+  - {id: CODE_OF_CONDUCT_REPORTING, value: "ethics line",
+     statement_en: "Suspected misconduct can be reported confidentially through the ethics line without retaliation."}
+  - {id: GIFTS_LIMIT_RULE, value: "declare",
+     statement_en: "Gifts from clients or suppliers must be declared to the direct manager and may not be accepted if they could influence a business decision."}
 
-  - id: CS_NO_REMOTE
-    value: 0
-    unit: days per week
-    statement_en: Customer Support agents work on-site only because of shift coverage requirements; remote work is not available.
-    scope_department: D-CS
+  # ---------------------------------------------------------------- Department-specific
+  - {id: CS_SHIFTS, value: "08:00 to 16:00 and 12:00 to 20:00", scope_department: D-CS,
+     statement_en: "Customer Support works two shifts, 08:00 to 16:00 and 12:00 to 20:00, assigned in a weekly rota."}
+  - {id: CS_LEAVE_COVERAGE, value: 20, scope_department: D-CS,
+     statement_en: "In Customer Support, no more than 20 percent of agents on the same shift may be on planned leave at the same time."}
+  - {id: ENG_ON_CALL, value: "weekly rotation", scope_department: D-ENG,
+     statement_en: "Engineers participate in a weekly on-call rotation for production incidents outside working hours."}
+  - {id: ENG_ON_CALL_RESPONSE_MINUTES, value: 30, scope_department: D-ENG,
+     statement_en: "The on-call engineer must acknowledge a critical alert within 30 minutes."}
+  - {id: ENG_RELEASE_FREEZE, value: "Thursday", scope_department: D-ENG,
+     statement_en: "Production releases are not deployed on Thursdays."}
+  - {id: IT_ON_CALL, value: "weekend rota", scope_department: D-IT,
+     statement_en: "IT support keeps a weekend rota for critical system outages."}
+  - {id: SALES_FIELD_CHECKIN, value: "mobile app", scope_department: D-SAL,
+     statement_en: "Sales staff on client visits check in through the HR mobile app at the client location instead of the badge reader."}
+  - {id: SALES_VISIT_REPORT_HOURS, value: 24, scope_department: D-SAL,
+     statement_en: "Sales staff must log every client visit in the CRM within 24 hours."}
+  - {id: FIN_MONTH_END, value: 3, scope_department: D-FIN,
+     statement_en: "Annual leave requests in Finance that fall within the last 3 working days of a month also require the Head of Finance's approval."}
+  - {id: HR_RECORDS_ACCESS, value: "need to know", scope_department: D-HR,
+     statement_en: "Human Resources staff access employee records strictly on a need-to-know basis and log every access to restricted records."}
+  - {id: MKT_EVENT_COMP_DAY, value: 1, scope_department: D-MKT,
+     statement_en: "Marketing staff who work at an event on a weekend receive 1 compensatory day off per event day, to be used within 30 days."}
+  - {id: OPS_HANDOVER_MINUTES, value: 15, scope_department: D-OPS,
+     statement_en: "Operations shift handovers take 15 minutes and are recorded in the handover log."}
+  - {id: LEG_CONTRACT_REVIEW_DAYS, value: 5, scope_department: D-LEG,
+     statement_en: "Legal reviews standard contracts within 5 working days of a complete request."}
+  - {id: PRC_VENDOR_MEETINGS, value: "two", scope_department: D-PRC,
+     statement_en: "Procurement meetings with vendors require two Company representatives."}
+
+  # ---------------------------------------------------------------- Confidential (HR / management only)
+  - {id: CONF_SALARY_BANDS, value: "12,000 to 35,000", rule: D21-compensation,
+     statement_en: "Monthly salary bands (EGP): intern 5,000 to 8,000; staff 12,000 to 35,000; team lead 35,000 to 55,000; department head 60,000 to 90,000. Part-time salaries are 60 percent of the full-time band."}
+  - {id: CONF_SALARY_REVIEW, value: "January",
+     statement_en: "Salary reviews take effect each January and are based on the December performance review."}
+  - {id: CONF_BONUS_POOL, value: 10,
+     statement_en: "The annual bonus pool is capped at 10 percent of the total annual base payroll and is allocated by department head proposals approved by the Head of Human Resources."}
+  - {id: CONF_PIP_DAYS, value: 60,
+     statement_en: "A performance improvement plan lasts 60 days with check-ins every 2 weeks."}
+  - {id: CONF_TERMINATION_APPROVAL, value: "Head of Human Resources",
+     statement_en: "Any termination requires a documented investigation and approval from the Head of Human Resources and the department head."}
+  - {id: CONF_INVESTIGATION_WITNESS, value: "two",
+     statement_en: "Disciplinary investigation interviews are attended by two HR representatives and documented in a signed record."}
+
+  # ---------------------------------------------------------------- Distractors (different populations, never Company employees)
+  - {id: DIST_AGENCY_ANNUAL_LEAVE_DAYS, value: 14,
+     statement_en: "Agency staff supplied by external manpower vendors receive 14 days of leave per year under their agency contract, not under Company policy."}
+  - {id: DIST_AGENCY_GRACE_MINUTES, value: 5,
+     statement_en: "Agency staff working at Company premises follow the vendor's attendance rule with a 5-minute grace period."}
+  - {id: DIST_TRAINEE_LEAVE_DAYS, value: 1,
+     statement_en: "Participants in the external summer trainee programme (students, not employees) may take 1 day off per month of the programme."}
+  - {id: DIST_TRAINEE_HOURS, value: "10:00 to 15:00",
+     statement_en: "Summer trainees attend from 10:00 to 15:00."}
+  - {id: DIST_BOARD_NOTICE_DAYS, value: 7,
+     statement_en: "Board of Directors meetings require written notice of 7 days to board members."}
+  - {id: DIST_CLIENT_SITE_CALENDAR, value: "client calendar",
+     statement_en: "Consultants seconded full-time to a client site follow the client's working calendar and public holidays for the duration of the secondment."}
+  - {id: DIST_VOLUNTEER_DAY, value: 1,
+     statement_en: "The Company's community programme offers 1 paid volunteering day per year, booked through the CSR team (it is not a leave type in the HR portal)."}
+  - {id: DIST_SUPPLIER_AWARD, value: "annual",
+     statement_en: "The annual supplier excellence award recognises vendors, not employees."}
+  - {id: DIST_GYM_SUBSIDY, value: 50,
+     statement_en: "The sports club partnership gives employees a 50 percent discount on membership; it is a benefit, not a reward."}
+  - {id: DIST_CONFERENCE_DAYS, value: 3,
+     statement_en: "Speakers representing the Company at external conferences may receive up to 3 conference days per year that are not deducted from annual leave."}
