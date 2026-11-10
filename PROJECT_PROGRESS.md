@@ -88,6 +88,17 @@
 - `docs/benchmark-methodology.md` (dataset part), `benchmark/README.md`.
 - **Milestone 3 complete.**
 
+### Task 4.1: Document ingestion pipeline (Milestone 4), 2026-11-10
+- Flyway V3: source_document, document_chunk (vector(768) HNSW + language tsvector GIN), embedding_cache, ingestion_run,
+  ingestion_failure. Department scope stored as a code without FK (HRIS reseed never touches the corpus).
+- `ai` package: EmbeddingService (batching, RETRIEVAL_DOCUMENT/QUERY, dimension check, retry, quota exception with provider
+  quotaId), ProviderErrors (shared by corpus generation). `config/EmbeddingOptionsFactory` (Gemini options).
+- `document.ingestion`: CorpusLoader, SectionChunker (section-aware, configurable), DocumentStore (JDBC), IngestionService
+  (incremental: hash skip, embedding cache, removals, per-document transaction, failure recording), IngestionRunner (banners, report).
+- `common/RunReports` (shared banner + report files).
+- Real run: **191/227 documents, 1,010 chunks embedded**; stopped cleanly at the free-tier daily embedding quota (1,000 texts/day,
+  confirmed by probe). 36 documents (~198 chunks) resume on the next run after the daily reset.
+
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
 - D2: Flyway owns the schema (`ddl-auto=validate`, no Spring AI auto schema).
@@ -124,6 +135,11 @@
 - D28: Benchmark relevance is derived from facts (ACTIVE, non-distractor, visible, in scope, target language); grade 2 for
   CORE/DEPARTMENT, 1 for supporting pages. Cross-lingual cases restrict relevance to the other language.
 - D29: Benchmark size 100 (demo scale, user decision); datasets are immutable per version (checksum).
+- D30: Chunking = structure-aware sections with size guard (target 250 / max 400 / min 40 / overlap 40 estimated tokens) and a
+  "Title > Section" context header in the embedding text; fixed-size kept as a future baseline experiment.
+- D31: Embedding gateway lives in a neutral `ai` package (used by document ingestion and rag retrieval; avoids a module cycle).
+- D32: Free-tier embedding quota is per TEXT (100/min, 1,000/day): incremental ingestion and caching are mandatory; query
+  embeddings must be cached (model + task type + text hash) before benchmark runs.
 - D18: The HRIS `data` module is internally one module. Sub-capabilities may reference each other's entities (e.g. `LeaveRequest → Employee`);
   other modules must go through services (ArchUnit rule 1).
 
@@ -134,7 +150,9 @@
 - Actuator health shows full details (local dev only). Restrict in Milestone 6.
 
 ## Test status
-- `mvnw clean verify` (Task 3.4): **82 tests, 82 passed, 0 failed** (adds BenchmarkDatasetTest 3, BenchmarkStructuredAnswersTest 1).
+- `mvnw clean verify` (Task 4.1): **94 tests, 94 passed, 0 failed** (adds SectionChunkerTest 6, EmbeddingServiceTest 5,
+  IngestionIntegrationTest 1). Secret scan of 353 files: none.
+- Previously (Task 3.4): 82 tests, 82 passed, 0 failed (adds BenchmarkDatasetTest 3, BenchmarkStructuredAnswersTest 1).
 - Previously (Task 3.3): 78 tests, 78 passed, 0 failed (CorpusGeneratorTest now 15: quota fallback, clean stop,
   finish-reason classification and blocking, per-document overrides, no rewrite/no duplicates on re-run; PromptBuilderTest 4).
 - Corpus: `validate-only --require-complete` → 227/227, 0 problems. Secret scan of 328 repo files: none found.
@@ -143,6 +161,7 @@
   **The compose DB currently holds the STANDARD dataset.**
 
 ## Next proposed task
-- Milestone 4, Task 4.1: Document ingestion: Flyway V3 (source_document, document_chunk with vector(768) + language-specific
-  tsvector, ingestion_run, ingestion_failure), load corpus front matter + Markdown, section-aware chunking (configurable size and
-  overlap), batch embeddings with gemini-embedding-001 (RETRIEVAL_DOCUMENT), re-ingestion by content hash, failure tracking.
+- Resume ingestion after the daily quota reset (00:00 US Pacific = 10:00 Cairo): same command; expect ~36 documents ingested,
+  191 unchanged, ~198 embedding texts.
+- Then Milestone 5, Task 5.1: Naive RAG baseline: query embedding (cached), vector top-K with status/version/access filtering in
+  SQL, context building, generation with citations, abstention, trace persistence, chat API.

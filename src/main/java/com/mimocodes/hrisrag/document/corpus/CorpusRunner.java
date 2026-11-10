@@ -22,6 +22,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Component;
 
+import com.mimocodes.hrisrag.common.RunReports;
 import com.mimocodes.hrisrag.config.ChatOptionsFactory;
 
 /**
@@ -117,26 +118,12 @@ public class CorpusRunner implements ApplicationRunner {
 		return failed == 0 && notAttempted == 0;
 	}
 
-	/** Prominent multi-line status message, printed to the log (and therefore the console). */
 	private static void banner(String title, String details) {
-		String line = "=".repeat(78);
-		log.info("\n{}\n  {}\n  {}\n{}", line, title, details.replace("\n", "\n  "), line);
+		RunReports.banner(log, title, details);
 	}
 
-	/** Writes the full report to {reportDir}/{kind}-{timestamp}.txt and {reportDir}/latest-{kind}.txt. */
 	private Path writeReport(String kind, String content) {
-		try {
-			Path dir = Path.of(props.reportDir());
-			Files.createDirectories(dir);
-			String stamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-			Path file = dir.resolve(kind + "-" + stamp + ".txt");
-			Files.writeString(file, content, StandardCharsets.UTF_8);
-			Files.writeString(dir.resolve("latest-" + kind + ".txt"), content, StandardCharsets.UTF_8);
-			return file;
-		}
-		catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		return RunReports.write(props.reportDir(), kind, content);
 	}
 
 	/** Validates every corpus file against the plan and the manifest checksums. */

@@ -18,6 +18,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 
+import com.mimocodes.hrisrag.ai.ProviderErrors;
 import com.mimocodes.hrisrag.config.ChatOptionsFactory;
 
 /**
@@ -282,31 +283,16 @@ public class CorpusGenerator {
 		}
 	}
 
-	/** 429 / 5xx style failures that are worth retrying. Walks the cause chain. */
 	static boolean isTransient(Throwable e) {
-		return anyMessage(e, "429", "500", "502", "503", "504", "unavailable", "overloaded", "resource_exhausted",
-				"high demand", "timeout", "timed out", "quota");
+		return ProviderErrors.isTransient(e);
 	}
 
-	static boolean isRateLimit(Throwable e) {
-		return anyMessage(e, "429", "resource_exhausted", "quota");
+	private static boolean isRateLimit(Throwable e) {
+		return ProviderErrors.isRateLimit(e);
 	}
 
-	/** Google reports daily free-tier limits with quota ids such as "GenerateRequestsPerDayPerProjectPerModel". */
-	static boolean isDailyQuota(Throwable e) {
-		return anyMessage(e, "perday", "per day", "requests per day");
-	}
-
-	private static boolean anyMessage(Throwable e, String... needles) {
-		for (Throwable t = e; t != null; t = t.getCause()) {
-			String m = String.valueOf(t.getMessage()).toLowerCase(Locale.ROOT);
-			for (String n : needles) {
-				if (m.contains(n)) {
-					return true;
-				}
-			}
-		}
-		return false;
+	private static boolean isDailyQuota(Throwable e) {
+		return ProviderErrors.isDailyQuota(e);
 	}
 
 	private static String read(Path file) {

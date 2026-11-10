@@ -97,7 +97,17 @@ when a quota is exhausted):
 
 Select a subset with `--hrisrag.corpus.only=group:FAQ` or `--hrisrag.corpus.only=POL-ANNUAL-LEAVE-EN@2.0`.
 
-## 6. Run the tests
+## 6. Ingest the corpus into PostgreSQL (chunks + embeddings)
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--hrisrag.ingest.run=true --spring.ai.retry.max-attempts=1"
+```
+
+Incremental and resumable: unchanged documents are skipped (0 embedding calls). On the Gemini free tier the embedding quota is
+about 1,000 chunks per day, so the first full ingestion of the 1,208 chunks takes two runs on two days; the second run continues where the
+first stopped. Details: [`docs/ingestion-pipeline.md`](docs/ingestion-pipeline.md).
+
+## 7. Run the tests
 
 ```powershell
 .\mvnw.cmd -B clean verify
@@ -106,7 +116,7 @@ Select a subset with `--hrisrag.corpus.only=group:FAQ` or `--hrisrag.corpus.only
 The tests start their own throwaway pgvector database with Testcontainers (Docker must be running). They do not use the
 Compose database and do not call Gemini.
 
-## 7. Reset the database
+## 8. Reset the database
 
 ```powershell
 docker compose down -v               # removes the container AND the data volume

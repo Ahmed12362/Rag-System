@@ -45,6 +45,19 @@ hrisrag:
     seed: 42
     reference-date: 2026-11-01    # the dataset's "today"; benchmark anchors assume this date
 
+  embedding:
+    model: gemini-embedding-001     # same model for documents and queries (D5); changing it requires a full re-embed
+    dimensions: 768
+    batch-size: 25
+  ingest:
+    run: false                      # ingest only when requested: --hrisrag.ingest.run=true
+    corpus-dir: corpus
+    chunking:
+      target-tokens: 250
+      max-tokens: 400
+      min-tokens: 40
+      overlap-tokens: 40
+
 management:
   endpoints:
     web:
