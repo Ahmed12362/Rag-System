@@ -125,8 +125,11 @@ public class NaiveRagStrategy implements RagStrategy {
 					calls, guardrails, t0, embeddingMs, retrievalMs, generationMs, settings);
 		}
 		catch (RuntimeException e) {
-			log.error("request {} failed: {}", requestId, e.getMessage());
-			guardrails.add(new GuardrailDecision("SYSTEM", "PROVIDER_OR_INFRASTRUCTURE", "ERROR", e.getMessage()));
+			// Full provider/infrastructure details go to the server log only. The response (and trace) get a fixed,
+			// safe description: raw provider errors can contain project ids, URLs and configuration details.
+			log.error("request {} failed: {}", requestId, e.getMessage(), e);
+			guardrails.add(new GuardrailDecision("SYSTEM", "PROVIDER_OR_INFRASTRUCTURE", "ERROR",
+					"upstream model or infrastructure error (details in server logs, request " + requestId + ")"));
 			return result(requestId, AnswerStatus.ERROR, arabic ? ERROR_AR : ERROR_EN, List.of(), List.of(), "", calls,
 					guardrails, t0, embeddingMs, retrievalMs, generationMs, settings);
 		}

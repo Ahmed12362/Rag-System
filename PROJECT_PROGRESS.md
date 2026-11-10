@@ -107,7 +107,14 @@
 - `rag`: QueryEmbedder (cached), VectorRetriever (filters in SQL, `hnsw.iterative_scan`), ContextBuilder, GroundedPrompt
   `grounded-v1`, CitationValidator, NaiveRagStrategy, RagService, TraceStore, ChatController (`POST /api/v1/chat`,
   `GET /api/v1/strategies`, ProblemDetail errors).
-- Tests with fake models: all pass. **Real Gemini answers NOT VERIFIED yet**: the embedding quota is used up until the daily reset.
+- Tests with fake models: all pass.
+- New Google AI Studio project key (fresh free-tier quota; same embedding model, so no re-embedding): ingestion completed **227/227
+  documents, 1,208 chunks**. The new project returned transient 403 SERVICE_DISABLED while activating; resolved on retry.
+- **Real verification: 7 questions** (EN, AR, Egyptian, AR→EN-only fact, unanswerable, confidential request, injected document). All
+  correct after 2 fixes found by the real run: (1) provider error details leaked in the API response, now a safe message;
+  (2) a multi-part Gemini response was read as "INSU", now all result parts are joined (also in CorpusGenerator). Results:
+  `docs/rag-strategies.md` §5.
+- Manual testing kit: `scripts/ask.ps1` + README §7 (startup order, 10 questions with expected answers).
 
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
@@ -164,8 +171,8 @@
 - Actuator health shows full details (local dev only). Restrict in Milestone 6.
 
 ## Test status
-- `mvnw clean verify` (Task 5.1): **103 tests, 103 passed, 0 failed** (adds RagUnitTest 4, RagFlowIntegrationTest 5).
-  Secret scan of 371 files: none.
+- `mvnw test` (Task 5.1 final): **104 tests, 104 passed, 0 failed** (adds RagUnitTest 4, RagFlowIntegrationTest 5,
+  GenerationServiceTest 1). Secret scan of 373 files: none.
 - Previously (Task 4.1): 94 tests, 94 passed, 0 failed (adds SectionChunkerTest 6, EmbeddingServiceTest 5,
   IngestionIntegrationTest 1). Secret scan of 353 files: none.
 - Previously (Task 3.4): 82 tests, 82 passed, 0 failed (adds BenchmarkDatasetTest 3, BenchmarkStructuredAnswersTest 1).
@@ -177,8 +184,5 @@
   **The compose DB currently holds the STANDARD dataset.**
 
 ## Next proposed task
-- Resume ingestion after the daily quota reset (00:00 US Pacific = 10:00 Cairo): same command; expect ~36 documents ingested,
-  191 unchanged, ~198 embedding texts.
-- After the reset, real verification of Naive RAG: ~6 questions via `POST /api/v1/chat` (EN, AR, Egyptian, unanswerable,
-  superseded trap, cross-lingual), recording answers, citations, latency and tokens.
+- User manual testing of the chat (README §7). Regenerate the AI Studio key afterwards (it was shared in chat).
 - Then Milestone 6 (guardrails + security + minimal benchmark metrics/experiment persistence).

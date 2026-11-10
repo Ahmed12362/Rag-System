@@ -135,12 +135,15 @@ class RagFlowIntegrationTest extends IntegrationTestBase {
 		assertThat(abstained.citations()).isEmpty();
 
 		ScriptedChatModel.RESPONDER.set(p -> {
-			throw new RuntimeException("400 INVALID_ARGUMENT");
+			throw new RuntimeException("403 SERVICE_DISABLED project 769331917188 https://console.example/activate");
 		});
 		RagResult error = rag.ask(StrategyId.NAIVE, new RagQuery("ما هي سياسة الإجازة؟", null, EMPLOYEE),
 				props.defaultSettings());
 		assertThat(error.status()).isEqualTo(AnswerStatus.ERROR);
 		assertThat(error.answer()).isEqualTo("المساعد غير متاح مؤقتاً. يرجى المحاولة لاحقاً.");
+		// regression (real run, Task 5.1): raw provider errors must not reach the client or the trace
+		assertThat(error.guardrails().toString()).doesNotContain("769331917188").doesNotContain("console.example")
+				.contains("details in server logs");
 	}
 
 	@Test

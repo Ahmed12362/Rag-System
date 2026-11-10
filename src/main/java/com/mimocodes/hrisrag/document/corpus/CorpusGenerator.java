@@ -242,7 +242,7 @@ public class CorpusGenerator {
 			try {
 				ChatResponse response = chatModel.call(prompt);
 				long latency = (System.nanoTime() - start) / 1_000_000;
-				String text = response.getResult().getOutput().getText();
+				String text = com.mimocodes.hrisrag.ai.GenerationService.joinedText(response);
 				Usage usage = response.getMetadata() == null ? null : response.getMetadata().getUsage();
 				Integer promptTokens = usage == null ? null : usage.getPromptTokens();
 				Integer completion = usage == null ? null : usage.getCompletionTokens();

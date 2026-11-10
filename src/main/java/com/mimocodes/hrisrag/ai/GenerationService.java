@@ -48,6 +48,26 @@ public class GenerationService {
 		this.optionsFactory = optionsFactory;
 	}
 
+	/**
+	 * The full answer text. Gemini may return one candidate split into several parts, which Spring AI maps to several
+	 * results; reading only {@code getResult()} returns the FIRST part (observed in Task 5.1: "INSU" instead of
+	 * "INSUFFICIENT_CONTEXT", finishReason STOP). All parts are joined in order.
+	 */
+	public static String joinedText(ChatResponse response) {
+		List<org.springframework.ai.chat.model.Generation> results = response.getResults();
+		if (results.size() > 1) {
+			log.info("provider returned {} result parts; joining them", results.size());
+		}
+		StringBuilder sb = new StringBuilder();
+		for (var r : results) {
+			String t = r.getOutput() == null ? null : r.getOutput().getText();
+			if (t != null) {
+				sb.append(t);
+			}
+		}
+		return sb.toString();
+	}
+
 	public Generation generate(String systemPrompt, String userPrompt, String model, double temperature,
 			Duration timeout) {
 		Prompt prompt = new Prompt(List.of(new SystemMessage(systemPrompt), new UserMessage(userPrompt)),
@@ -58,7 +78,7 @@ public class GenerationService {
 				ChatResponse response = CompletableFuture.supplyAsync(() -> chatModel.call(prompt))
 						.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
 				long latency = (System.nanoTime() - start) / 1_000_000;
-				String text = response.getResult().getOutput().getText();
+				String text = joinedText(response);
 				Usage usage = response.getMetadata() == null ? null : response.getMetadata().getUsage();
 				Integer p = usage == null ? null : usage.getPromptTokens();
 				Integer c = usage == null ? null : usage.getCompletionTokens();
