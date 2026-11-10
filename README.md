@@ -79,7 +79,25 @@ Profiles: `TEST` (30 employees), `STANDARD` (500 employees, the default), `LARGE
 ~35 s). Details, business rules and the fixed benchmark anchors (e.g. `E-1001`, `LR-1005`) are in
 [`docs/synthetic-dataset.md`](docs/synthetic-dataset.md).
 
-## 5. Run the tests
+## 5. Policy corpus (generated once, committed)
+
+The bilingual policy corpus in `corpus/` is generated from `corpus-spec/` by an LLM, validated, and committed with checksums in
+`corpus/manifest.json` (see [`docs/corpus-design.md`](docs/corpus-design.md)). You normally only **validate** it:
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--hrisrag.corpus.validate-only=true --hrisrag.corpus.require-complete=true"
+```
+
+To (re)generate missing or invalid documents (needs `GOOGLE_API_KEY`; resumable; falls back through the free flash-lite models
+when a quota is exhausted):
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--hrisrag.corpus.generate=true --spring.ai.retry.max-attempts=1"
+```
+
+Select a subset with `--hrisrag.corpus.only=group:FAQ` or `--hrisrag.corpus.only=POL-ANNUAL-LEAVE-EN@2.0`.
+
+## 6. Run the tests
 
 ```powershell
 .\mvnw.cmd -B clean verify
@@ -88,14 +106,14 @@ Profiles: `TEST` (30 employees), `STANDARD` (500 employees, the default), `LARGE
 The tests start their own throwaway pgvector database with Testcontainers (Docker must be running). They do not use the
 Compose database and do not call Gemini.
 
-## 6. Reset the database
+## 7. Reset the database
 
 ```powershell
 docker compose down -v               # removes the container AND the data volume
 docker compose up -d
 ```
 
-The next application start re-runs all Flyway migrations on the empty database. Then regenerate the data (step 4).
+The next application start re-runs all Flyway migrations on the empty database. Then regenerate the HRIS data (step 4).
 
 ## Project layout
 

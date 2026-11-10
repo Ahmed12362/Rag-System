@@ -13,6 +13,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param pilot                select the pilot batch (first EN and AR document per group + one Egyptian FAQ)
  * @param only                 selectors: doc id (KEY@version), doc key, or group:NAME
  * @param requireComplete      validate-only: every planned document must exist
+ * @param models               generation model fallback chain: when a model's quota is exhausted the next one is used;
+ *                             when all are exhausted the run stops cleanly and can be resumed later
  * @param maxTransientRetries  retries for 429/5xx provider errors (exponential backoff)
  * @param maxFeedbackAttempts  regenerations with validator feedback after a failed draft
  */
@@ -26,7 +28,8 @@ public record CorpusProperties(
 		@DefaultValue("corpus-spec") String specDir,
 		@DefaultValue("corpus") String outputDir,
 		@DefaultValue("target/corpus-rejected") String rejectedDir,
-		@DefaultValue("gemini-3.5-flash-lite") String model,
+		@DefaultValue("target/corpus-reports") String reportDir,
+		@DefaultValue({ "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-lite-latest" }) List<String> models,
 		@DefaultValue("0.3") double temperature,
 		@DefaultValue("1500") long delayMs,
 		@DefaultValue("5000") long initialBackoffMs,

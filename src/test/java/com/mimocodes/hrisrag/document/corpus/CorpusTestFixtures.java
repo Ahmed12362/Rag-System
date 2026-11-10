@@ -21,7 +21,7 @@ final class CorpusTestFixtures {
 				lang.equals("en") ? "Test Policy" : "سياسة اختبار", "LEAVE", "POLICY", lang, "ACTIVE",
 				LocalDate.of(2026, 1, 1), null, null, "INTERNAL");
 		return new PlannedDocument(md, "CORE", facts, List.of("Purpose", "Policy", "Exceptions"), false, 40, 120, null,
-				null, injection);
+				null, injection, null, null);
 	}
 
 	static String englishBody(String policySentence) {

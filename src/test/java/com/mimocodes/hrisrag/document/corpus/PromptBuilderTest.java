@@ -35,6 +35,14 @@ class PromptBuilderTest {
 	}
 
 	@Test
+	void currentDocumentsDoNotMentionVersionOrDateButSupersededDo() {
+		assertThat(prompt("POL-ANNUAL-LEAVE-EN@2.0")).contains("Do not mention the version number or the effective date")
+				.doesNotContain("2026-01-01");
+		assertThat(prompt("POL-ANNUAL-LEAVE-EN@1.0")).contains("2023-01-01");
+		assertThat(PromptBuilder.SYSTEM_PROMPT).contains("proofread");
+	}
+
+	@Test
 	void feedbackIsAppended() {
 		PlannedDocument p = spec.documents().getFirst();
 		assertThat(builder.userPrompt(p, spec.facts(), List.of("Remove numbers that are not in the provided facts: [99]")))

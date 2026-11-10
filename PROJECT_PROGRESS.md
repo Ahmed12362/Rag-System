@@ -70,6 +70,24 @@
 - Spec checks caught 2 real issues before generation: the FAQ count was 52, not 48 (inventory corrected), and a department-only fact
   was used in a company-wide document (fixed).
 
+### Task 3.3: Full corpus generation and freeze (Milestone 3), 2026-11-10
+- Prompt: no version/date in normal documents; Arabic proofreading and number-agreement instruction.
+- Generator: model fallback chain on quota exhaustion; clean stop (NOT_ATTEMPTED) when all models are exhausted;
+  finish-reason logging and classification (non-STOP blocks a draft); optional per-document `temperature` / `voice` (unused).
+- Runner: start/completion banners with counts and report path; reports in `target/corpus-reports/`.
+- Corpus: **227/227 valid**, manifest consistent (227 files, 227 distinct ids, checksums OK), all `gemini-3.5-flash-lite`.
+  4 first-run failures were regenerated with unchanged settings (all finishReason=STOP); no recitation evidence, so no overrides.
+- Corpus runs must use `--spring.ai.retry.max-attempts=1` (Spring AI's default retry is 10 attempts with x5 backoff).
+
+### Task 3.4: Benchmark dataset (Milestone 3), 2026-11-10
+- `benchmark/hris-bench-v1.yaml`: **100 hand-written cases** (reduced from 200 at the user's request): FACTUAL 25, MULTI_HOP 15,
+  CROSS_LINGUAL 20 (5 EN→AR, 5 AR→EN, 6 EG→MSA, 4 mixed), UNANSWERABLE 10, SECURITY 12, STRUCTURED 18. SHA-256 recorded.
+- `benchmark` package: BenchmarkCase, BenchmarkDataset (loader + derived graded relevance), BenchmarkDatasetValidator.
+- Validation: dataset rules PASS, structured answers recomputed from the seeded DB 18/18 PASS, leakage check PASS, absent terms
+  verified against all 227 corpus files. The validator caught 2 real labelling errors, which were fixed.
+- `docs/benchmark-methodology.md` (dataset part), `benchmark/README.md`.
+- **Milestone 3 complete.**
+
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
 - D2: Flyway owns the schema (`ddl-auto=validate`, no Spring AI auto schema).
@@ -100,6 +118,12 @@
   department → access level ≤ user. All intentional conflicts are declared in documents.yaml.
 - D24: Corpus tooling in Java inside the app (`--hrisrag.corpus.generate|validate-only`), consistent with seeding.
 - D25: Provider-specific chat options are created by a `ChatOptionsFactory` bean (Spring AI's Gemini model rejects portable options).
+- D26: Corpus generation model = free flash-lite fallback chain (quota). The app's answering model stays `gemini-3.5-flash-lite` (D5)
+  and is used again for RAG testing from Milestone 5.
+- D27: A draft is accepted only if validation passes AND the provider did not report an explicit non-STOP finish reason.
+- D28: Benchmark relevance is derived from facts (ACTIVE, non-distractor, visible, in scope, target language); grade 2 for
+  CORE/DEPARTMENT, 1 for supporting pages. Cross-lingual cases restrict relevance to the other language.
+- D29: Benchmark size 100 (demo scale, user decision); datasets are immutable per version (checksum).
 - D18: The HRIS `data` module is internally one module. Sub-capabilities may reference each other's entities (e.g. `LeaveRequest → Employee`);
   other modules must go through services (ArchUnit rule 1).
 
@@ -110,12 +134,15 @@
 - Actuator health shows full details (local dev only). Restrict in Milestone 6.
 
 ## Test status
-- `mvnw clean verify` (Task 3.2): **69 tests, 69 passed, 0 failed** (adds CorpusSpecTest 5, CorpusDocumentValidatorTest 9,
-  CorpusGeneratorTest 7, PromptBuilderTest 3, ModelProviderConfigurationTest 1).
+- `mvnw clean verify` (Task 3.4): **82 tests, 82 passed, 0 failed** (adds BenchmarkDatasetTest 3, BenchmarkStructuredAnswersTest 1).
+- Previously (Task 3.3): 78 tests, 78 passed, 0 failed (CorpusGeneratorTest now 15: quota fallback, clean stop,
+  finish-reason classification and blocking, per-document overrides, no rewrite/no duplicates on re-run; PromptBuilderTest 4).
+- Corpus: `validate-only --require-complete` → 227/227, 0 problems. Secret scan of 328 repo files: none found.
 - Manual (compose DB): STANDARD and LARGE seeded and validated (0 failures); STANDARD fingerprint identical across two runs;
   representative SQL (remaining leave, request status, upcoming meetings, lateness by department) returns the expected values.
   **The compose DB currently holds the STANDARD dataset.**
 
 ## Next proposed task
-- Milestone 3, Task 3.3: Prompt tweak (no version/date in normal documents), generate the remaining 206 documents, review a sample
-  per group, `validate-only --require-complete`, freeze `corpus/` + manifest. Pending user go/no-go on the pilot quality.
+- Milestone 4, Task 4.1: Document ingestion: Flyway V3 (source_document, document_chunk with vector(768) + language-specific
+  tsvector, ingestion_run, ingestion_failure), load corpus front matter + Markdown, section-aware chunking (configurable size and
+  overlap), batch embeddings with gemini-embedding-001 (RETRIEVAL_DOCUMENT), re-ingestion by content hash, failure tracking.

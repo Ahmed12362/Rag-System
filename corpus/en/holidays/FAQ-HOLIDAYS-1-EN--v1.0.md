@@ -1,0 +1,32 @@
+---
+doc_key: FAQ-HOLIDAYS-1-EN
+version: '1.0'
+title: Public Holidays FAQ - Part 1
+category: HOLIDAYS
+doc_type: FAQ
+language: en
+status: ACTIVE
+effective_date: '2026-01-01'
+expiry_date: null
+scope_department: null
+access_level: INTERNAL
+---
+# Public Holidays FAQ - Part 1
+
+## 1. Which dates are recognized as fixed official holidays by the Company?
+The Company observes several specific calendar dates throughout the year as non-working public holidays for all eligible personnel. These recognized fixed dates are 7 January, 25 January, 25 April, 1 May, 30 June, 23 July and 6 October. When these particular dates fall within the standard weekly schedule, staff are entitled to paid time away from their regular duties to observe the occasion. Human resources management ensures that payroll systems automatically account for these specific dates without requiring individual leave requests from personnel. Managers must review operational rosters well in advance of these calendar markers to ensure proper coverage without violating the designated rest periods. In edge cases where a fixed date falls immediately adjacent to a scheduled weekend, supervisory staff must coordinate closely with team members to balance department output while fully respecting the mandated holiday schedule provided by the Company.
+
+## 2. How are Islamic holidays and Sham el-Nessim scheduled within the annual calendar?
+Unlike the fixed calendar dates, certain religious and traditional observances do not fall on the same Gregorian calendar day each year. Islamic holidays and Sham el-Nessim follow the official annual announcement issued by the relevant governmental authorities. Once these official declarations are published, the Company updates its internal operational calendars and communicates the exact dates to all departments. Employees are advised to monitor official communications from management to confirm the precise days off for these movable observances. Department heads hold the responsibility of adjusting project deadlines and client deliverables to accommodate these changing dates. Edge cases can arise when moon-sighting declarations shift expected dates by a day or two; in such situations, the Company adheres strictly to the officially announced national timeline, and staff must adjust their personal and professional plans accordingly to align with the updated schedule.
+
+## 3. What days constitute the standard working week for staff?
+The Company operates on a structured schedule designed to align internal collaboration with regional business norms. The working week runs from Sunday to Thursday, serving as the primary period for office attendance, client meetings, and operational activities. During these days, all departments are expected to maintain full functionality and accessibility for internal and external stakeholders. Employees are required to complete their designated hours within this framework unless specific alternative arrangements have been approved by management. Supervisors are responsible for monitoring attendance and ensuring that workflow remains steady throughout this five-day period. An edge case might involve urgent operational emergencies occurring on a Thursday evening that threaten to bleed into the resting days, requiring careful escalation procedures to resolve issues without disrupting the standard rhythm of the subsequent working week.
+
+## 4. Which days are designated as the weekend for all personnel?
+To ensure proper rest and work-life balance for all personnel, the Company designates specific days as the official weekend. Friday and Saturday are the weekend, during which regular business operations are paused and offices are generally closed. This two-day break allows staff to disconnect from their professional duties, recharge, and prepare for the upcoming Sunday resumption of tasks. Department leadership must respect these rest days by avoiding non-essential communications or work demands during this period. Personnel are not expected to log hours or respond to routine correspondence over the weekend. An edge case could occur when critical maintenance or system upgrades must take place outside of active business hours; in such rare scenarios, management must coordinate with volunteers or designated rotation teams well ahead of time, ensuring appropriate compensatory time off or adherence to Company policies regarding weekend work.
+
+## 5. How do fixed holidays interact with the standard working week?
+The integration of fixed holidays into the standard working week requires careful planning by both employees and management within the Company. Since the working week runs from Sunday to Thursday, a fixed holiday such as 25 January or 1 May may land squarely on a Monday or a Wednesday, temporarily interrupting the flow of standard business days. On such occasions, staff receive the day off with full pay, and operational targets are adjusted downward to reflect the reduced available hours. Department heads are responsible for reallocating urgent tasks to ensure that project milestones remain achievable despite the interruption. An edge case presents itself when a fixed holiday falls on a Thursday, directly preceding the weekend of Friday and Saturday; this creates an extended three-day consecutive break, requiring robust handover procedures on Wednesday to prevent any operational bottlenecks while the entire Company is away.
+
+## 6. What happens when movable holidays coincide with the weekend?
+When Islamic holidays or Sham el-Nessim, which follow the official annual announcement, land on a rest day, specific administrative protocols apply. Because Friday and Saturday are the weekend, an official announcement placing a movable holiday on either of those days requires guidance from human resources regarding substitution policies. The Company ensures that staff are not unfairly disadvantaged by calendar overlaps between movable holidays and the normal weekend rest days. Management is responsible for cascading any adjusted observance days down to their teams promptly upon receiving the official announcement. An edge case might involve a movable holiday that spans multiple days where only the initial day overlaps with Saturday; leadership must review the governing guidelines provided by the Company to determine the exact treatment for the remaining affected working days, ensuring consistent application across every department.

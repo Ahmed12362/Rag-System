@@ -108,9 +108,10 @@ public record CorpusSpec(Map<String, Fact> facts, List<PlannedDocument> document
 		if (e.get("facts") != null) {
 			((List<?>) e.get("facts")).forEach(x -> factIds.add(s(x)));
 		}
+		Double temperature = e.get("temperature") == null ? null : ((Number) e.get("temperature")).doubleValue();
 		return new PlannedDocument(md, s(e.get("group")), List.copyOf(factIds), List.copyOf(sections), faq,
 				((Number) range.get(0)).intValue(), ((Number) range.get(1)).intValue(), s(e.get("intent")),
-				s(e.get("dialect")), s(e.get("injection")));
+				s(e.get("dialect")), s(e.get("injection")), temperature, s(e.get("voice")));
 	}
 
 	// ------------------------------------------------------------------------------------------------- validation

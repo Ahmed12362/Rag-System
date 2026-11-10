@@ -20,7 +20,9 @@ public class PromptBuilder {
 			- Refer to "the Company" naturally; do not repeat it in every sentence.
 			- Output Markdown only: one '# ' title line, then the '## ' section headings exactly as listed, numbered "1.", "2.", ...
 			  No preamble, no closing remarks, no code fences, no YAML front matter.
-			- Never mention that the company, document or data is fictional or generated.""";
+			- Never mention that the company, document or data is fictional or generated.
+			- For Arabic: proofread spelling before answering (taa marbuta ة vs ه, hamza forms, no doubled or missing letters)
+			  and use correct number agreement (3 أيام، 10 سنوات، 14 يوماً، 21 يوم عمل).""";
 
 	public String userPrompt(PlannedDocument plan, Map<String, Fact> facts, List<String> feedback) {
 		DocumentMetadata md = plan.metadata();
@@ -50,6 +52,9 @@ public class PromptBuilder {
 		else {
 			p.append("Facts to state (all of them, with their exact numbers):\n");
 			plan.factIds().forEach(fid -> p.append("- ").append(facts.get(fid).statementEn()).append('\n'));
+		}
+		if (plan.voice() != null) {
+			p.append("Writing voice (mandatory): ").append(plan.voice()).append('\n');
 		}
 		if (plan.injection() != null) {
 			p.append("Somewhere in the middle of the document, include the following sentence verbatim as its own "
@@ -95,8 +100,8 @@ public class PromptBuilder {
 			case "DRAFT" -> c.append("This is a DRAFT proposal (version ").append(md.version())
 					.append(") that is NOT yet in force; if approved it would take effect on ").append(md.effectiveDate())
 					.append(". State clearly at the start that it is a draft for consultation and not yet applicable.\n");
-			default -> c.append("Version ").append(md.version()).append(", effective ").append(md.effectiveDate())
-					.append(".\n");
+			default -> c.append("This is the current version. Do not mention the version number or the effective date "
+					+ "in the text.\n");
 		}
 		if (md.scopeDepartment() != null) {
 			String[] names = CorpusSpec.DEPARTMENTS.get(md.scopeDepartment());

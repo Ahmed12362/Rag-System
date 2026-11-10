@@ -166,7 +166,42 @@ Manual review (4 documents read in full):
 - **Recurring artefact:** the model writes "version X, effective <date>" into the body of normal documents. Planned prompt fix for Task 3.3:
   mention version and dates only in SUPERSEDED/DRAFT documents.
 
-### Full-corpus estimate (from the measured pilot)
+### Task 3.3: full corpus (frozen 2026-11-10)
+
+| Item | Result |
+|---|---|
+| Documents | **227 / 227 valid** (`validate-only --require-complete`: planned 227, checked 227, problems 0), 124 EN / 103 AR |
+| Model | `gemini-3.5-flash-lite` for all 227 (fallback chain `3.5-flash-lite → 3.1-flash-lite → flash-lite-latest` configured, never needed) |
+| Effort | Full run: 267 API calls, 103,208 prompt + 166,509 completion tokens, 0 thinking. 170 documents passed on the 1st call, 46 on the 2nd, 11 on the 3rd |
+| Size | 127,695 words (330–1,046 per document, average 563), 1.2 MB |
+| Integrity | 227 manifest entries = 227 files = 227 distinct `doc_key@version`; SHA-256 checksums match |
+
+**Failures and resolution.** The full run ended with 4 failures (1 slightly over the word limit; 3 responses cut off mid-text on all
+3 attempts). Finish-reason logging was then added: every response logs `finishReason` (classified STOP / RECITATION / SAFETY /
+MAX_TOKENS / OTHER / UNKNOWN). Any explicit non-STOP reason now blocks a draft even if it looks valid; a missing reason is logged and
+left to the structural checks. Re-running **only** those 4 documents with **unchanged** settings produced 4 valid documents, all with
+`finishReason=STOP`. There was **no evidence of RECITATION**, so the optional per-document `temperature` / `voice` overrides
+(supported by `documents.yaml`) were **not** applied. The cause of the earlier truncations is unknown (they ran before
+finish-reason logging existed) and did not recur.
+
+**Corpus-wide review checks** (scripted, all 227 documents):
+- normal documents writing version/date in the body: 1 of 206 generated after the prompt fix;
+- Arabic number-agreement slips: 1 (a colloquial Egyptian FAQ, acceptable in dialect);
+- drafts not saying "draft": 0;
+- department documents not naming their department: 0;
+- "fictional / AI / generated" mentions: 0;
+- code fences or front matter in bodies: 0;
+- 4 of 6 superseded documents and 1 confidential document (`CONF-SUCCESSION-EN`) do not restate their status in the prose. Not
+  a defect: status, expiry and access level are enforced from metadata. Left unchanged to avoid rewriting valid documents.
+
+Manual reads: Egyptian FAQ, Arabic core policy, English superseded v1.0, Arabic injection document, Arabic distractor (clearly scoped to
+agency staff), English Customer Support override (states the exception against the company default of 2 remote days).
+
+**Run visibility:** every corpus run prints a start banner and a completion banner (`FINISHED: SUCCESS`, `FINISHED WITH FAILURES`,
+`STOPPED: QUOTA EXHAUSTED`, or `VALIDATION PASSED/FAILED`) with the counts and the report path. Reports are saved to
+`target/corpus-reports/{generation|validation}-<timestamp>.txt` plus `latest-*.txt`.
+
+### Full-corpus estimate (from the measured pilot, before Task 3.3)
 
 | Option | Tokens (approx.) | Sequential time (approx.) | Note |
 |---|---|---|---|

@@ -82,29 +82,61 @@ public class CorpusRunner implements ApplicationRunner {
 	private boolean generate(CorpusSpec spec) {
 		List<PlannedDocument> selection = props.pilot() ? spec.pilotSelection()
 				: props.only().isEmpty() ? spec.documents() : spec.select(props.only());
-		log.info("Generating {} document(s) with model {} (temperature {})", selection.size(), props.model(),
-				props.temperature());
+		banner("CORPUS GENERATION STARTED", selection.size() + " document(s) selected, model chain " + props.models()
+				+ ", temperature " + props.temperature());
 		CorpusGenerator generator = new CorpusGenerator(chatModel, optionsFactory, props, prompts, validator,
 				CorpusRunner::sleep);
 		List<CorpusGenerator.Outcome> outcomes = generator.generate(spec, selection, Path.of(props.outputDir()),
 				Path.of(props.rejectedDir()));
 
 		StringBuilder sb = new StringBuilder("\n===== CORPUS GENERATION REPORT =====\n");
-		outcomes.forEach(o -> sb.append(String.format("%-14s %-48s %-12s calls=%d tokens(p/c/t)=%s/%s/%s %,d ms%n",
-				o.status(), o.plan().id(), o.plan().group(), o.apiCalls(), o.promptTokens(), o.completionTokens(),
-				o.thinkingTokens(), o.latencyMs())));
+		outcomes.forEach(o -> sb.append(String.format("%-14s %-48s %-12s %-24s calls=%d tokens(p/c/t)=%s/%s/%s %,d ms%n",
+				o.status(), o.plan().id(), o.plan().group(), o.model(), o.apiCalls(), o.promptTokens(),
+				o.completionTokens(), o.thinkingTokens(), o.latencyMs())));
 		long failed = outcomes.stream().filter(o -> o.status() == CorpusGenerator.Status.FAILED).count();
-		sb.append(String.format("generated=%d skipped=%d failed=%d api_calls=%d prompt_tokens=%d completion_tokens=%d "
-				+ "thinking_tokens=%d%n",
-				outcomes.stream().filter(o -> o.status() == CorpusGenerator.Status.GENERATED).count(),
-				outcomes.stream().filter(o -> o.status() == CorpusGenerator.Status.SKIPPED_VALID).count(), failed,
+		long notAttempted = outcomes.stream().filter(o -> o.status() == CorpusGenerator.Status.NOT_ATTEMPTED).count();
+		long generated = outcomes.stream().filter(o -> o.status() == CorpusGenerator.Status.GENERATED).count();
+		long skipped = outcomes.stream().filter(o -> o.status() == CorpusGenerator.Status.SKIPPED_VALID).count();
+		sb.append(String.format("generated=%d skipped=%d failed=%d not_attempted=%d api_calls=%d prompt_tokens=%d "
+				+ "completion_tokens=%d thinking_tokens=%d%n", generated, skipped, failed, notAttempted,
 				outcomes.stream().mapToInt(CorpusGenerator.Outcome::apiCalls).sum(),
 				sum(outcomes, CorpusGenerator.Outcome::promptTokens), sum(outcomes, CorpusGenerator.Outcome::completionTokens),
 				sum(outcomes, CorpusGenerator.Outcome::thinkingTokens)));
 		outcomes.stream().filter(o -> o.status() == CorpusGenerator.Status.FAILED)
 				.forEach(o -> sb.append("FAILED ").append(o.plan().id()).append(": ").append(o.lastErrors()).append('\n'));
+		if (notAttempted > 0) {
+			sb.append("Quota exhausted for every model: re-run the same command later to resume.\n");
+		}
+		Path report = writeReport("generation", sb.toString());
 		log.info(sb.toString());
-		return failed == 0;
+		String result = notAttempted > 0 ? "STOPPED: QUOTA EXHAUSTED" : failed > 0 ? "FINISHED WITH FAILURES"
+				: "FINISHED: SUCCESS";
+		banner("CORPUS GENERATION " + result, String.format(
+				"total=%d generated=%d skipped(valid)=%d failed=%d not_attempted=%d%nreport: %s", outcomes.size(),
+				generated, skipped, failed, notAttempted, report.toAbsolutePath()));
+		return failed == 0 && notAttempted == 0;
+	}
+
+	/** Prominent multi-line status message, printed to the log (and therefore the console). */
+	private static void banner(String title, String details) {
+		String line = "=".repeat(78);
+		log.info("\n{}\n  {}\n  {}\n{}", line, title, details.replace("\n", "\n  "), line);
+	}
+
+	/** Writes the full report to {reportDir}/{kind}-{timestamp}.txt and {reportDir}/latest-{kind}.txt. */
+	private Path writeReport(String kind, String content) {
+		try {
+			Path dir = Path.of(props.reportDir());
+			Files.createDirectories(dir);
+			String stamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+			Path file = dir.resolve(kind + "-" + stamp + ".txt");
+			Files.writeString(file, content, StandardCharsets.UTF_8);
+			Files.writeString(dir.resolve("latest-" + kind + ".txt"), content, StandardCharsets.UTF_8);
+			return file;
+		}
+		catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	/** Validates every corpus file against the plan and the manifest checksums. */
@@ -133,8 +165,15 @@ public class CorpusRunner implements ApplicationRunner {
 		catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		log.info("Corpus validation: {} file(s) checked, {} problem(s)", checked, problems.size());
+		StringBuilder sb = new StringBuilder("===== CORPUS VALIDATION REPORT =====\n");
+		sb.append("planned=").append(spec.documents().size()).append(" checked=").append(checked).append(" problems=")
+				.append(problems.size()).append(" require_complete=").append(props.requireComplete()).append('\n');
+		problems.forEach(p -> sb.append(p).append('\n'));
+		Path report = writeReport("validation", sb.toString());
 		problems.forEach(p -> log.error("  {}", p));
+		banner("CORPUS VALIDATION " + (problems.isEmpty() ? "PASSED" : "FAILED"), String.format(
+				"planned=%d checked=%d problems=%d%nreport: %s", spec.documents().size(), checked, problems.size(),
+				report.toAbsolutePath()));
 		return problems.isEmpty();
 	}
 
