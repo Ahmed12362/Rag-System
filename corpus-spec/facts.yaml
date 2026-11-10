@@ -1,0 +1,69 @@
+# Fact registry: the single source of truth for every policy fact stated in the corpus.
+# EXAMPLE SUBSET (Task 3.1). The full registry is written in Task 3.2.
+#
+# Rules:
+# - Every number a document states must come from a fact listed for that document in documents.yaml.
+# - Facts marked `rule: D21-*` must equal the behaviour of the synthetic HRIS data generator (docs/synthetic-dataset.md §4).
+# - Never put benchmark questions or expected answers here; those live in benchmark/ (Task 3.3).
+
+facts:
+  - id: ANNUAL_LEAVE_DAYS
+    value: 21
+    unit: working days per year
+    statement_en: Employees are entitled to 21 working days of paid annual leave per calendar year.
+    rule: D21-annual-leave
+
+  - id: ANNUAL_LEAVE_LONG_SERVICE_DAYS
+    value: 30
+    unit: working days per year
+    statement_en: Employees with 10 or more years of service are entitled to 30 working days of annual leave per year.
+    rule: D21-annual-leave
+
+  - id: LONG_SERVICE_YEARS
+    value: 10
+    unit: years of service
+    statement_en: The long-service entitlement applies after 10 full years of service.
+    rule: D21-annual-leave
+
+  - id: ANNUAL_LEAVE_NOTICE_DAYS
+    value: 14
+    unit: calendar days
+    statement_en: Annual leave requests should be submitted at least 14 calendar days before the first day of leave; shorter notice is at the manager's discretion.
+
+  - id: ANNUAL_LEAVE_NOTICE_DAYS_V1
+    value: 7
+    unit: calendar days
+    statement_en: (Superseded rule, version 1.0 only) Annual leave requests had to be submitted at least 7 days in advance.
+    superseded: true
+
+  - id: ANNUAL_LEAVE_CARRY_OVER_DAYS
+    value: 5
+    unit: working days
+    statement_en: Up to 5 unused annual leave days may be carried over and must be used by 31 March of the following year.
+
+  - id: LEAVE_APPROVER
+    value: direct manager
+    statement_en: Leave requests are approved by the employee's direct manager; department heads are approved by the Head of Human Resources.
+    rule: D21-approvals
+
+  - id: LEAVE_COUNTED_IN_WORKING_DAYS
+    value: Sunday to Thursday, excluding official public holidays
+    statement_en: Leave is counted in working days (Sunday to Thursday); weekends and official public holidays are not deducted.
+    rule: D21-calendar
+
+  - id: LATE_GRACE_MINUTES
+    value: 15
+    unit: minutes
+    statement_en: Arrivals up to 15 minutes after the 09:00 start time are within the grace period and are not recorded as late.
+    rule: D21-lateness
+
+  - id: REMOTE_DAYS_PER_WEEK
+    value: 2
+    unit: days per week
+    statement_en: Eligible employees may work remotely up to 2 days per week with their manager's approval.
+
+  - id: CS_NO_REMOTE
+    value: 0
+    unit: days per week
+    statement_en: Customer Support agents work on-site only because of shift coverage requirements; remote work is not available.
+    scope_department: D-CS

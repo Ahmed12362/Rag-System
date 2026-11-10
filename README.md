@@ -3,8 +3,8 @@
 A standalone project that builds, evaluates and compares RAG strategies (Naive, Hybrid, Agentic) over a synthetic,
 bilingual (English / Arabic) HRIS domain. All data is synthetic; nothing connects to a real HR system.
 
-> Status: **Milestone 1: infrastructure.** The app starts, connects to PostgreSQL + pgvector, runs Flyway and exposes a health check.
-> RAG features are not implemented yet. See [`PROJECT_PROGRESS.md`](PROJECT_PROGRESS.md).
+> Status: **Milestone 2: HRIS data.** PostgreSQL + pgvector, Flyway schema for the HRIS domain, and a deterministic synthetic
+> data generator. RAG features are not implemented yet. See [`PROJECT_PROGRESS.md`](PROJECT_PROGRESS.md).
 
 ## Tech stack (verified, see `docs/architecture.md` §1)
 
@@ -68,7 +68,18 @@ curl.exe -s http://localhost:8080/actuator/health
 
 Expected: `"status":"UP"` with a `db` component `UP`.
 
-## 4. Run the tests
+## 4. Generate synthetic HRIS data
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--hrisrag.seed.run=true --hrisrag.seed.profile=STANDARD"
+```
+
+This replaces all HRIS rows with a deterministic synthetic dataset, validates it, prints a summary with a fingerprint, and exits.
+Profiles: `TEST` (30 employees), `STANDARD` (500 employees, the default), `LARGE` (5,000 employees, ~1.1M attendance rows,
+~35 s). Details, business rules and the fixed benchmark anchors (e.g. `E-1001`, `LR-1005`) are in
+[`docs/synthetic-dataset.md`](docs/synthetic-dataset.md).
+
+## 5. Run the tests
 
 ```powershell
 .\mvnw.cmd -B clean verify
@@ -77,14 +88,14 @@ Expected: `"status":"UP"` with a `db` component `UP`.
 The tests start their own throwaway pgvector database with Testcontainers (Docker must be running). They do not use the
 Compose database and do not call Gemini.
 
-## 5. Reset the database
+## 6. Reset the database
 
 ```powershell
 docker compose down -v               # removes the container AND the data volume
 docker compose up -d
 ```
 
-The next application start re-runs all Flyway migrations on the empty database.
+The next application start re-runs all Flyway migrations on the empty database. Then regenerate the data (step 4).
 
 ## Project layout
 

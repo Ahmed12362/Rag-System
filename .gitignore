@@ -22,7 +22,7 @@ target/
 *.iws
 *.iml
 *.ipr
-.env.example
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/

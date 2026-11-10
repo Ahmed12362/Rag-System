@@ -10,6 +10,9 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/${DB_NAME:hris_rag}
     username: ${DB_USER:hris_user}
     password: ${DB_PASSWORD}
+    hikari:
+      data-source-properties:
+        reWriteBatchedInserts: true   # pgjdbc rewrites JDBC batches into multi-row INSERTs (seeding performance)
 
   jpa:
     open-in-view: false
@@ -34,6 +37,13 @@ spring:
             options:
               model: gemini-embedding-001     # decision D5
               dimensions: 768
+
+hrisrag:
+  seed:
+    run: false                    # reseed only when explicitly requested: --hrisrag.seed.run=true
+    profile: STANDARD             # TEST | STANDARD | LARGE
+    seed: 42
+    reference-date: 2026-11-01    # the dataset's "today"; benchmark anchors assume this date
 
 management:
   endpoints:

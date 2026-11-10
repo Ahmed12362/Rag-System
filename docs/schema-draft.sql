@@ -39,7 +39,7 @@ CREATE INDEX employee_manager_idx    ON employee(manager_id);
 CREATE TABLE employee_compensation (
     employee_id     BIGINT PRIMARY KEY REFERENCES employee(id),
     monthly_salary  NUMERIC(12,2) NOT NULL CHECK (monthly_salary > 0),
-    currency        CHAR(3)       NOT NULL DEFAULT 'EGP',
+    currency        VARCHAR(3)    NOT NULL DEFAULT 'EGP' CHECK (char_length(currency) = 3),  -- was CHAR(3); Hibernate validate expects varchar (Task 2.1)
     effective_from  DATE          NOT NULL
 );
 

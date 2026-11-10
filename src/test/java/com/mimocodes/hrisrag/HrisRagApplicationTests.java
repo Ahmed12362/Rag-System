@@ -9,9 +9,7 @@ import java.net.http.HttpResponse;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -19,11 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Flyway applies the baseline migration, and the health endpoint reports UP.
  * Uses a placeholder Gemini key: no model call is made here.
  */
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-		"spring.ai.google.genai.api-key=test-placeholder",
-		"spring.ai.google.genai.embedding.api-key=test-placeholder" })
-class HrisRagApplicationTests {
+class HrisRagApplicationTests extends IntegrationTestBase {
 
 	@Autowired
 	JdbcTemplate jdbc;

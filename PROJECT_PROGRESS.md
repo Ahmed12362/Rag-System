@@ -33,6 +33,34 @@
 - Tests: `HrisRagApplicationTests` (Flyway V1 applied, `vector` 0.8.7 installed, health UP incl. db) on Testcontainers.
 - `README.md` with startup/test/reset commands. `git init` (branch `main`); no commits made (the user commits).
 
+### Task 2.1: HRIS schema, entities, repositories, architecture rules (Milestone 2), 2026-11-10
+- Flyway `V2__hris_core_schema.sql`: 12 HRIS tables with named constraints and indexes (from `docs/schema-draft.sql`).
+- JPA entities and repositories in `data.employee`, `data.attendance`, `data.leave`, `data.meeting`, `data.announcement`
+  (`entity` / `repository` subpackages). Enums are stored as strings that match the CHECK constraints. Remaining leave is derived.
+- Tool-backing queries: employee by code / direct reports, balance by employee+type+year, request by code, upcoming meetings,
+  visible announcements, attendance by date range.
+- Fixed during implementation: `currency CHAR(3)` → `VARCHAR(3)` (Hibernate validation); announcement query uses a LEFT JOIN
+  (an implicit inner join would have dropped company-wide announcements).
+- ArchUnit 1.5.1 rules (D9) now active. Test deps: `spring-boot-starter-data-jpa-test`, `archunit-junit5`.
+- Compose DB migrated to V2 (12 tables); app starts with Hibernate `validate`; health UP.
+
+### Task 2.2: Deterministic synthetic HRIS data generator (Milestone 2), 2026-11-10
+- `data.seed` package: `SyntheticDataGenerator` (pure spec → dataset, per-table random streams), `WorkCalendar` (Egyptian
+  week/holidays, 09:00 start, 15-min grace), `AnchorScenario` (fixed benchmark anchors E-1000..E-1004, LR-1000..1006,
+  M-1000..1004, A-1000..1002), `SeedWriter` (JDBC batches, explicit IDs, sequence advance), `SeedValidator` (DB-level rules +
+  anchor answers), `DatasetFingerprint` (MD5 per table, UTC), `SeedService` (one transaction: truncate → write → validate),
+  `SeedRunner` (`--hrisrag.seed.run=true`, then exit).
+- Profiles TEST / STANDARD / LARGE, plus per-count overrides. STANDARD: 12,284 rows in ~0.7 s; LARGE: 1,221,509 rows
+  (1.1M attendance) written in 32.6 s; both validated with 0 failures.
+- `.env.example` is tracked in git again (Option A; it contains placeholders only).
+- `docs/synthetic-dataset.md` created; README seeding section.
+
+### Task 3.1: Policy corpus design + generation pilot (Milestone 3), 2026-11-10
+- `docs/corpus-design.md`: generation approach, file format/metadata, inventory (~235 docs), precedence rules, validation rules,
+  pilot results and full-corpus estimate. `corpus-spec/` with example `facts.yaml` (11 facts) and `documents.yaml` (5 docs).
+- Pilot (Gemini, real calls): EN and AR Annual Leave Policy. All numeric facts present, no unplanned numbers, length in range after a
+  prompt fix. `gemini-3.5-flash` hit a transient HTTP 503 → retry/backoff is required. Spec consistency check: 0 errors.
+
 ## Decisions
 - D1: Keep Spring Boot 4.1.2 + Spring AI 2.0.1 (no blocker found).
 - D2: Flyway owns the schema (`ddl-auto=validate`, no Spring AI auto schema).
@@ -42,7 +70,7 @@
 - D6 (applied in pom): Own Flyway-managed `document_chunk` table + `JdbcTemplate`; no Spring AI `PgVectorStore`.
 - D7: Agentic RAG uses a manual, bounded tool loop (internal tool execution disabled) so every call is authorized, limited and traced.
 - D8: No custom LLM interface over Spring AI. Thin `EmbeddingService` / `GenerationService` own batching, task type, usage, timeouts.
-- D9: Module dependency rules enforced with ArchUnit, **deferred to Milestone 2** (no module classes exist yet).
+- D9 (applied in Task 2.1): Module dependency rules enforced with ArchUnit 1.5.1. Rules for not-yet-existing modules use `allowEmptyShould(true)`.
 - D10: Enumerations as VARCHAR + CHECK; business codes as separate unique keys; derived values not stored.
 - D11: One row per document version; a partial unique index guarantees a single ACTIVE version per `doc_key`.
 - D12: Access/status filtering inside the retrieval SQL (join), not in application code.
@@ -50,6 +78,19 @@
 - D14: Restricted synthetic tables `employee_compensation` and `disciplinary_record` exist as security-test targets.
 - D15: DB credentials and the API key live only in `.env`, shared by Docker Compose and Spring (`spring.config.import`).
 - D16: Flyway V1 contains extensions only; tables are added by the milestone that needs them.
+- D17: HRIS entities: `@Getter` + protected no-arg constructor + required-field constructor; no `@Data`; lazy `@ManyToOne`;
+  `@Enumerated(STRING)`; `Instant` for TIMESTAMPTZ; composite key for invitations as an `@Embeddable` record.
+- D19: Seeding uses JDBC batch inserts with explicit deterministic IDs (not JPA), in one transaction with validation (rollback on failure).
+- D20: Dataset "today" is a fixed reference date (2026-11-01). Benchmark anchors are fixed records independent of seed/profile, and
+  benchmark runs must freeze the application clock to that date (tools take an injectable `Clock`, M8).
+- D21: Synthetic business rules (21/30-day annual leave, 15-min grace, Sun–Thu week, manager approval) are the contract the
+  M3 policy documents must match.
+- D22: Corpus = fact-controlled LLM generation (facts.yaml + documents.yaml), validated, then frozen in git with a checksum
+  manifest. Reproducibility comes from committed files, not regeneration. `generation` metadata is never ingested.
+- D23: Corpus precedence: ACTIVE only → newest effective date → department-scoped ACTIVE overrides company policy for that
+  department → access level ≤ user. All intentional conflicts are declared in documents.yaml.
+- D18: The HRIS `data` module is internally one module. Sub-capabilities may reference each other's entities (e.g. `LeaveRequest → Employee`);
+  other modules must go through services (ArchUnit rule 1).
 
 ## Open items
 - The old Gemini key (from the deleted `application.properties`) must be revoked in Google AI Studio, if not done already.
@@ -58,11 +99,13 @@
 - Actuator health shows full details (local dev only). Restrict in Milestone 6.
 
 ## Test status
-- `mvnw clean verify`: 3 tests, 3 passed, 0 failed (Testcontainers pgvector). BUILD SUCCESS.
-- Manual: compose DB healthy; app started and health returned `UP` (db `UP`); Flyway V1 recorded in `hris_rag`; restart idempotent.
-- Secret scan of all committable files + `target/`: none found.
+- `mvnw clean verify` (Task 2.2): **44 tests, 44 passed, 0 failed.** HrisConstraintTest 13, HrisRepositoryTest 8,
+  SyntheticDataGeneratorTest 6, SeedIntegrationTest 4, SeedValidatorTest 5, HrisRagApplicationTests 3, ArchitectureRulesTest 5.
+- Manual (compose DB): STANDARD and LARGE seeded and validated (0 failures); STANDARD fingerprint identical across two runs;
+  representative SQL (remaining leave, request status, upcoming meetings, lateness by department) returns the expected values.
+  **The compose DB currently holds the STANDARD dataset.**
 
 ## Next proposed task
-- Milestone 2, Task 2.1: HRIS schema migrations (`department`, `employee`, `employee_compensation`, `leave_type`, `leave_balance`,
-  `leave_request`, attendance, meetings, rewards, disciplinary, announcements) from `docs/schema-draft.sql`, JPA entities + repositories,
-  Testcontainers repository/constraint tests, and the first ArchUnit rules.
+- Milestone 3, Task 3.2: Full fact registry and document plan (~235 entries); corpus generator (Java/Spring AI or script, with
+  retry/backoff, pacing, resume); validator; generate, review a sample, and freeze `corpus/` + `manifest.json`.
+  Pending user decision: the generation model (all flash-lite vs flash for Arabic).

@@ -2,8 +2,19 @@
 
 > Status: **design, validated as a draft**. The draft DDL was applied to `pgvector/pgvector:0.8.7-pg18-bookworm`
 > (PostgreSQL 18.6) on 2026-11-10 (Task 0.3). Valid sample rows inserted; 11 constraint-violation tests were rejected as expected.
-> It is **not** a Flyway migration yet. Tables become migrations in their milestones:
-> HRIS tables in M2, documents/ingestion in M4, traces in M5, benchmark/experiments in M6 (minimal) and M9, `app_user` in M6.
+> Tables become Flyway migrations in their milestones. Implementation status:
+>
+> | Group | Migration | Status |
+> |---|---|---|
+> | Extensions (`vector`) | `V1__enable_extensions.sql` | **Implemented** (Task 1.1) |
+> | HRIS core (12 tables, §3.1 without `app_user`) | `V2__hris_core_schema.sql` | **Implemented** (Task 2.1): JPA entities in `com.mimocodes.hrisrag.data.*`, validated by Hibernate `ddl-auto=validate` |
+> | `app_user` | n/a | Planned, M6 |
+> | Documents / ingestion | n/a | Planned, M4 |
+> | Traces | n/a | Planned, M5 |
+> | Benchmark / experiments | n/a | Planned, M6 (minimal) and M9 |
+>
+> Change made during implementation: `employee_compensation.currency` is `VARCHAR(3)` with a `char_length = 3` check, instead of
+> `CHAR(3)`. Hibernate schema validation rejects `bpchar` for a `String` column, and a plain type is preferred over mapping overrides.
 
 ## 1. Conventions
 
@@ -111,7 +122,7 @@ traces survive a reseed of the synthetic data.
 |---|---|---|
 | `department` | `code` UK, `name_en`, `name_ar` | ~10 rows |
 | `employee` | `employee_code` UK, `email` UK (synthetic `@example.test`), FK `department_id`, self-FK `manager_id` (≠ own id), `employment_type`, `status` | ~500 rows |
-| `employee_compensation` | PK = FK `employee_id`, `monthly_salary > 0` | **Restricted (HR_ADMIN only).** Exists so salary-disclosure attacks have a real target. Never embedded or indexed for RAG. |
+| `employee_compensation` | PK = FK `employee_id` (JPA `@MapsId`), `monthly_salary > 0`, `currency VARCHAR(3)` | **Restricted (HR_ADMIN only).** Exists so salary-disclosure attacks have a real target. Never embedded or indexed for RAG. |
 | `attendance_record` | UK (`employee_id`, `work_date`), `minutes_late ≥ 0`, `check_out > check_in`, status | ~5,000 rows |
 | `leave_type` | `code` UK (ANNUAL, SICK, …), bilingual names, default days | |
 | `leave_balance` | UK (`employee_id`, `leave_type_id`, `year`); entitled / used / pending ≥ 0 | Remaining is computed |
@@ -180,6 +191,14 @@ Result: 24 tables and 54 indexes created with no errors.
 | P5 Vector top-K joined with status + access filter, user max = INTERNAL | PASS: returned only ACTIVE INTERNAL chunks; SUPERSEDED v1.0, DRAFT and CONFIDENTIAL chunks excluded |
 | P6 Keyword search: `الاجازه المرضيه` vs chunk "الإجازة المرضية" | **No match.** See §5 |
 | P7 Dataset → case → experiment → run → result → aggregates chain | PASS |
+
+### 4.1 Implementation tests (Task 2.1, real Flyway V2 schema on Testcontainers)
+
+| Test class | Tests | What it proves |
+|---|---|---|
+| `HrisRepositoryTest` | 8 | Round-trips for all 12 tables. Tool-backing queries: employee by code and direct reports, remaining leave = 13.0 (derived), leave request by code, attendance date range, upcoming meetings (excludes past, cancelled and declined; ordered), announcements visible to a department (company-wide + own department, excludes other departments, expired and future) |
+| `HrisConstraintTest` | 13 | Each invalid write raises `DataIntegrityViolationException`: leave end < start, APPROVED without decision time, PENDING with decision time, duplicate request code, duplicate balance per year, duplicate attendance day, check-out before check-in, DEPARTMENT announcement without department, COMPANY announcement with department, unsupported language, meeting ending before start, employee as own manager, duplicate employee code |
+| `ArchitectureRulesTest` | 5 | Module rules 1, 3, 4, 5, 6 from `architecture.md` §3 |
 
 ## 5. Findings to carry forward
 

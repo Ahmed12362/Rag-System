@@ -1,0 +1,97 @@
+# Document plan: one entry per corpus file. EXAMPLE SUBSET (Task 3.1); the full plan (~235 documents) is written in Task 3.2.
+#
+# `metadata` becomes the YAML front matter of the generated Markdown file (and later the source_document row).
+# `generation` is NOT copied into the corpus file. It drives the LLM prompt and the validator, and is never ingested.
+
+documents:
+  - metadata:
+      doc_key: POL-ANNUAL-LEAVE-EN
+      version: "2.0"
+      title: Annual Leave Policy
+      category: LEAVE
+      doc_type: POLICY
+      language: en
+      status: ACTIVE
+      effective_date: 2026-01-01
+      expiry_date: null
+      scope_department: null
+      access_level: INTERNAL
+    generation:
+      facts: [ANNUAL_LEAVE_DAYS, ANNUAL_LEAVE_LONG_SERVICE_DAYS, LONG_SERVICE_YEARS, ANNUAL_LEAVE_NOTICE_DAYS,
+              ANNUAL_LEAVE_CARRY_OVER_DAYS, LEAVE_APPROVER, LEAVE_COUNTED_IN_WORKING_DAYS]
+      sections: [Purpose, Scope, Entitlement, Requesting leave, Approval, Carry-over, Related procedures]
+      target_words: [450, 750]
+
+  - metadata:
+      doc_key: POL-ANNUAL-LEAVE-AR
+      version: "2.0"
+      title: سياسة الإجازة السنوية
+      category: LEAVE
+      doc_type: POLICY
+      language: ar
+      status: ACTIVE
+      effective_date: 2026-01-01
+      expiry_date: null
+      scope_department: null
+      access_level: INTERNAL
+    generation:
+      facts: [ANNUAL_LEAVE_DAYS, ANNUAL_LEAVE_LONG_SERVICE_DAYS, LONG_SERVICE_YEARS, ANNUAL_LEAVE_NOTICE_DAYS,
+              ANNUAL_LEAVE_CARRY_OVER_DAYS, LEAVE_APPROVER, LEAVE_COUNTED_IN_WORKING_DAYS]
+      sections: [الغرض, النطاق, الاستحقاق, طلب الإجازة, الموافقة, ترحيل الأيام, إجراءات ذات صلة]
+      target_words: [400, 700]
+      note: Written natively in Modern Standard Arabic, not as a literal translation of the English version.
+
+  - metadata:
+      doc_key: POL-ANNUAL-LEAVE-EN
+      version: "1.0"
+      title: Annual Leave Policy
+      category: LEAVE
+      doc_type: POLICY
+      language: en
+      status: SUPERSEDED
+      effective_date: 2023-01-01
+      expiry_date: 2025-12-31
+      scope_department: null
+      access_level: INTERNAL
+    generation:
+      facts: [ANNUAL_LEAVE_DAYS, ANNUAL_LEAVE_LONG_SERVICE_DAYS, LONG_SERVICE_YEARS, ANNUAL_LEAVE_NOTICE_DAYS_V1,
+              LEAVE_APPROVER, LEAVE_COUNTED_IN_WORKING_DAYS]
+      sections: [Purpose, Entitlement, Requesting leave, Approval]
+      target_words: [300, 500]
+      intent: VERSION_CONFLICT   # differs from v2.0 on notice period (7 vs 14 days); v2.0 is authoritative
+
+  - metadata:
+      doc_key: DEPT-CS-REMOTE-WORK-EN
+      version: "1.0"
+      title: Customer Support Remote Work Exception
+      category: REMOTE_WORK
+      doc_type: DEPARTMENT_POLICY
+      language: en
+      status: ACTIVE
+      effective_date: 2026-01-01
+      expiry_date: null
+      scope_department: D-CS
+      access_level: INTERNAL
+    generation:
+      facts: [CS_NO_REMOTE, REMOTE_DAYS_PER_WEEK]
+      sections: [Purpose, Exception, Rationale, Escalation]
+      target_words: [200, 400]
+      intent: DEPARTMENT_OVERRIDE  # overrides the company remote-work policy for D-CS only
+
+  - metadata:
+      doc_key: CONF-COMPENSATION-BANDS-EN
+      version: "1.0"
+      title: Salary Bands and Compensation Guidelines
+      category: COMPENSATION
+      doc_type: POLICY
+      language: en
+      status: ACTIVE
+      effective_date: 2026-01-01
+      expiry_date: null
+      scope_department: null
+      access_level: CONFIDENTIAL
+    generation:
+      facts: []
+      sections: [Purpose, Band structure, Review cycle, Confidentiality]
+      target_words: [300, 500]
+      intent: ACCESS_RESTRICTED   # must never be retrieved for EMPLOYEE / MANAGER roles
